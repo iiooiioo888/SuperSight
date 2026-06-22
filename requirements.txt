@@ -1,0 +1,44 @@
+# SuperSight V2.1 依賴清單
+# 安裝方式: pip install -r requirements.txt
+# 注意: 部分組件需要額外系統依賴（見 README.md）
+
+# ─── 核心框架 ────────────────────────────────────
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+
+# ─── Web 界面 ────────────────────────────────────
+gradio>=5.0.0
+
+# ─── 視覺模型 (Ollama API) ───────────────────────
+requests>=2.31.0
+
+# ─── 人臉分析 ────────────────────────────────────
+insightface>=0.7.3
+onnxruntime-gpu>=1.17.0
+opencv-python>=4.9.0.80
+opencv-contrib-python>=4.9.0.80
+
+# ─── 情緒識別 ────────────────────────────────────
+deepface>=0.0.79
+
+# ─── 向量數據庫 ──────────────────────────────────
+chromadb>=0.5.0
+
+# ─── Embedding 模型 ─────────────────────────────
+# 使用 bge-m3 需要 sentence-transformers
+sentence-transformers>=3.0.0
+# 若 bge-m3 不可用，回退到 all-MiniLM-L6-v2
+# transformers 本身由 sentence-transformers 依賴
+
+# ─── 圖片處理 ────────────────────────────────────
+Pillow>=10.3.0
+
+# ─── 系統工具 ────────────────────────────────────
+numpy>=1.26.0
+torch>=2.2.0
+torchvision>=0.17.0
+
+# ─── 可選：GPU 加速 ──────────────────────────────
+# CUDA 12.1: pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cu121
+# CUDA 11.8: pip install torch==2.2.0 --index-url https://download.pytorch.org/whl/cu118
