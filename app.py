@@ -1,6 +1,7 @@
 """
-SuperSight V2.1 - 主入口
+SuperSight V3.0 - 主入口
 基於 Gradio 的 Web 界面，提供圖片分析、記憶檢索、畫像查看功能。
+2026 世代適配：Blackwell FP4 + Qwen3-VL + bge-m4
 """
 import os
 import sys
@@ -356,7 +357,8 @@ def create_web_interface():
         gr.Markdown(
             f"---\n"
             f"**SuperSight {settings.VERSION}** | "
-            f"Powered by LangGraph + Qwen2.5-VL + ChromaDB | "
+            f"Powered by LangGraph + {settings.VLM_MODEL_NAME} + ChromaDB 1.2.x | "
+            f"FP4: {'✅' if settings.FP4_QUANTIZATION else '❌'} | "
             f"綁定地址: `{settings.SERVER_HOST}:{settings.SERVER_PORT}`"
         )
     

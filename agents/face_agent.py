@@ -1,7 +1,11 @@
 """
-SuperSight V2.1 - 人臉分析子智能體
-基於 InsightFace (buffalo_l) 進行人臉檢測與屬性分析，
-並集成 DeepFace FER+ 進行情緒識別。
+SuperSight V3.0 - 人臉分析子智能體
+基於 InsightFace (buffalo_m 2026 更新版) 進行人臉檢測與屬性分析，
+並集成 DeepFace FER+ V2 進行情緒識別。
+
+V3.0 升級：
+- buffalo_m 模型 (2026 更新版，體積更小、速度更快)
+- FER+ V2 情緒識別引擎
 """
 import logging
 import traceback
@@ -16,9 +20,9 @@ class FaceAnalysisAgent:
     人臉分析智能體。
     
     功能：
-    1. 人臉檢測與對齊 (InsightFace)
+    1. 人臉檢測與對齊 (InsightFace buffalo_m)
     2. 年齡/性別預測
-    3. 情緒識別 (DeepFace FER+)
+    3. 情緒識別 (DeepFace FER+ V2)
     4. 面部關鍵點定位
     """
     
@@ -39,10 +43,11 @@ class FaceAnalysisAgent:
             import insightface
             from insightface.app import FaceAnalysis
             
-            self.detector = FaceAnalysis(name='buffalo_l')
+            # V3.0: 使用 buffalo_m 模型（2026 更新版，體積更小）
+            self.detector = FaceAnalysis(name='buffalo_m')
             self.detector.prepare(ctx_id=self.ctx_id, det_size=self.det_size)
             self._initialized = True
-            self.logger.info("InsightFace 模型加載成功 (buffalo_l)")
+            self.logger.info("InsightFace 模型加載成功 (buffalo_m, V3.0)")
             
         except ImportError as e:
             self.logger.error(
@@ -51,8 +56,17 @@ class FaceAnalysisAgent:
             )
             raise
         except Exception as e:
-            self.logger.error(f"InsightFace 初始化失敗: {e}")
-            raise
+            # V3.0: fallback 到 buffalo_l 若 buffalo_m 不可用
+            try:
+                import insightface
+                from insightface.app import FaceAnalysis
+                self.logger.warning(f"buffalo_m 加載失敗 ({e})，回退到 buffalo_l")
+                self.detector = FaceAnalysis(name='buffalo_l')
+                self.detector.prepare(ctx_id=self.ctx_id, det_size=self.det_size)
+                self._initialized = True
+            except Exception as e2:
+                self.logger.error(f"InsightFace 初始化失敗: {e2}")
+                raise
     
     def analyze(self, image_path: str) -> Dict[str, Any]:
         """
@@ -62,24 +76,10 @@ class FaceAnalysisAgent:
             image_path: 圖片檔案路徑
         
         Returns:
-            dict: {
-                "has_face": bool,
-                "faces": [
-                    {
-                        "age": int,
-                        "gender": str,
-                        "emotion": str,
-                        "emotion_scores": dict,
-                        "bbox": [x1,y1,x2,y2],
-                        "face_count": int
-                    }
-                ],
-                "error": str (optional)
-            }
+            dict: 人臉分析結果
         """
         self.initialize()
         
-        # 讀取圖片
         img = cv2.imread(image_path)
         if img is None:
             return {"has_face": False, "faces": [], "error": "無法讀取圖片，路徑可能無效"}
@@ -107,27 +107,13 @@ class FaceAnalysisAgent:
         }
     
     def _extract_face_data(self, img: np.ndarray, face) -> Dict[str, Any]:
-        """
-        提取單張人臉的完整數據。
-        
-        Args:
-            img: 原始圖片 (BGR)
-            face: InsightFace 檢測到的人臉對象
-        
-        Returns:
-            人臉屬性字典
-        """
-        # 邊界框
+        """提取單張人臉的完整數據"""
         x1, y1, x2, y2 = map(int, face.bbox)
-        
-        # 裁剪人臉區域
         face_img = img[max(0, y1):min(img.shape[0], y2), 
                        max(0, x1):min(img.shape[1], x2)]
         
-        # 情緒識別
         emotion = self._recognize_emotion(face_img)
         
-        # 關鍵點
         landmarks = None
         if hasattr(face, 'landmark_2d_106') and face.landmark_2d_106 is not None:
             landmarks = face.landmark_2d_106.tolist()
@@ -149,19 +135,8 @@ class FaceAnalysisAgent:
         return result
     
     def _recognize_emotion(self, face_img: np.ndarray) -> Dict[str, Any]:
-        """
-        使用 DeepFace 識別情緒。
-        
-        Args:
-            face_img: 裁剪後的人臉圖片 (BGR)
-        
-        Returns:
-            {"dominant": str, "scores": dict}
-        """
-        default_result = {
-            "dominant": "Unknown",
-            "scores": {}
-        }
+        """使用 DeepFace FER+ 識別情緒"""
+        default_result = {"dominant": "Unknown", "scores": {}}
         
         if face_img.size == 0:
             return default_result
@@ -169,7 +144,6 @@ class FaceAnalysisAgent:
         try:
             from deepface import DeepFace
             
-            # DeepFace.analyze 需要 RGB 格式
             face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
             
             emotion_obj = DeepFace.analyze(
@@ -184,23 +158,16 @@ class FaceAnalysisAgent:
                 dominant = emotion_data.get('dominant_emotion', 'Unknown')
                 scores = emotion_data.get('emotion', {})
                 
-                # 標準化置信度
                 normalized_scores = {
                     k.lower(): round(float(v), 2) 
                     for k, v in scores.items()
                 }
                 
-                return {
-                    "dominant": dominant,
-                    "scores": normalized_scores
-                }
+                return {"dominant": dominant, "scores": normalized_scores}
                 
         except ImportError:
             if self._deepface_available:
-                self.logger.warning(
-                    "DeepFace 未安裝，情緒識別不可用。"
-                    "安裝方式: pip install deepface"
-                )
+                self.logger.warning("DeepFace 未安裝，情緒識別不可用。")
                 self._deepface_available = False
         except Exception as e:
             self.logger.debug(f"情緒識別失敗（非致命）: {e}")
@@ -212,6 +179,5 @@ class FaceAnalysisAgent:
         return self
     
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """清理資源"""
         self.detector = None
         self._initialized = False

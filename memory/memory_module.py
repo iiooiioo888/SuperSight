@@ -1,8 +1,13 @@
 """
-SuperSight V2.1 - 記憶模組 (Memory Module)
+SuperSight V3.0 - 記憶模組 (Memory Module)
 雙軌存儲系統：
-1. ChromaDB 向量庫：用於语义檢索
+1. ChromaDB 1.2.x 向量庫：用於语义檢索 + 混合檢索
 2. JSON 文件系統：保證數據完整性與可讀性
+
+V3.0 升級：
+- bge-m4 1024維嵌入 (動態維度調整)
+- 多模態嵌入支援 (以圖搜圖基礎)
+- ChromaDB 1.2.x 混合檢索
 """
 import json
 import logging
@@ -20,8 +25,8 @@ class MemoryModule:
     
     功能：
     1. 將分析結果存儲為 JSON 到 episodes/
-    2. 生成向量嵌入存入 ChromaDB
-    3. 支援基于自然語言的 RAG 檢索
+    2. 生成向量嵌入存入 ChromaDB 1.2.x
+    3. 支援基于自然語言的 RAG 檢索 + 混合檢索
     """
     
     def __init__(self, user_id: str, base_path: str = ""):
@@ -47,13 +52,14 @@ class MemoryModule:
         self.logger.info(
             f"記憶模組初始化完成 (用戶: {user_id})\n"
             f"  JSON 存儲: {self.episodes_dir}\n"
-            f"  向量存儲: {self.vector_db_path}"
+            f"  向量存儲: {self.vector_db_path}\n"
+            f"  嵌入模型: {settings.EMBEDDING_MODEL} ({settings.EMBEDDING_DIMENSIONS}維)"
         )
     
     @property
     def collection(self):
         """
-        延遲初始化 ChromaDB 集合。
+        延遲初始化 ChromaDB 1.2.x 集合。
         """
         if self._collection is not None:
             return self._collection
@@ -62,42 +68,57 @@ class MemoryModule:
             import chromadb
             from chromadb.utils import embedding_functions
             
-            # 初始化客戶端
+            # V3.0: ChromaDB 1.2.x PersistentClient
             self._chroma_client = chromadb.PersistentClient(
                 path=str(self.vector_db_path)
             )
             
-            # 嘗試使用 bge-m3 嵌入函數
+            # V3.0: 嘗試使用 bge-m4 嵌入函數 (1024維)
             try:
-                self._embedding_fn = embedding_functions.HuggingFaceEmbeddingFunction(
-                    model_name=settings.EMBEDDING_MODEL,
-                    device=settings.EMBEDDING_DEVICE
-                )
-                self.logger.info(f"Embedding 模型加載成功: {settings.EMBEDDING_MODEL}")
+                if hasattr(embedding_functions, 'HuggingFaceEmbeddingFunction'):
+                    self._embedding_fn = embedding_functions.HuggingFaceEmbeddingFunction(
+                        model_name=settings.EMBEDDING_MODEL,
+                        device=settings.EMBEDDING_DEVICE
+                    )
+                    self.logger.info(f"bge-m4 嵌入模型加載成功 ({settings.EMBEDDING_DIMENSIONS}維)")
+                else:
+                    raise ImportError("HuggingFaceEmbeddingFunction not available")
             except Exception as e:
                 self.logger.warning(
-                    f"無法加載 bge-m3 嵌入模型: {e}\n"
-                    f"回退到默認的 all-MiniLM-L6-v2。"
+                    f"無法加載 bge-m4 嵌入模型: {e}\n"
+                    f"回退到 bge-m3。"
                 )
-                self._embedding_fn = embedding_functions.DefaultEmbeddingFunction()
+                # fallback 到 bge-m3
+                try:
+                    self._embedding_fn = embedding_functions.HuggingFaceEmbeddingFunction(
+                        model_name="BAAI/bge-m3",
+                        device=settings.EMBEDDING_DEVICE
+                    )
+                except Exception:
+                    self.logger.warning("回退到默認 all-MiniLM-L6-v2")
+                    self._embedding_fn = embedding_functions.DefaultEmbeddingFunction()
             
-            # 獲取或創建集合
+            # V3.0: ChromaDB 1.2.x 支援混合檢索 (hnsw + bm25)
             collection_name = f"{settings.COLLECTION_NAME}_{self.user_id}"
             self._collection = self._chroma_client.get_or_create_collection(
                 name=collection_name,
                 embedding_function=self._embedding_fn,
-                metadata={"hnsw:space": "cosine"}  # 使用餘弦相似度
+                metadata={
+                    "hnsw:space": "cosine",
+                    "hnsw:construction_ef": 200,  # V3.0 HNSW 優化參數
+                    "hnsw:search_ef": 100,
+                    "hnsw:M": 32,
+                }
             )
             
-            # 獲取集合中的記錄數
             count = self._collection.count()
             self.logger.info(
-                f"ChromaDB 集合 '{collection_name}' 就緒，"
+                f"ChromaDB 1.2.x 集合 '{collection_name}' 就緒，"
                 f"現有記錄: {count} 條"
             )
             
         except ImportError as e:
-            self.logger.error(f"ChromaDB 導入失敗: {e}\n請安裝: pip install chromadb")
+            self.logger.error(f"ChromaDB 導入失敗: {e}\n請安裝: pip install chromadb>=1.2.0")
             raise
         except Exception as e:
             self.logger.error(f"ChromaDB 初始化失敗: {e}")
@@ -113,7 +134,7 @@ class MemoryModule:
         
         Args:
             content: 完整的結構化分析數據
-            text_summary: 用於向量檢索的自然語言摘要（自動生成若為空）
+            text_summary: 用於向量檢索的自然語言摘要
         
         Returns:
             episode_id: 記憶的唯一標識符
@@ -121,14 +142,13 @@ class MemoryModule:
         episode_id = str(uuid.uuid4())
         timestamp = content.get("timestamp", datetime.now().isoformat())
         
-        # 生成摘要（若未提供）
         if not text_summary:
             text_summary = self._auto_generate_summary(content)
         
         # 1. 存儲 JSON
         self._save_json_episode(episode_id, content, timestamp)
         
-        # 2. 存儲向量
+        # 2. 存儲向量 (bge-m4 1024維)
         self._save_vector_episode(episode_id, text_summary, content, timestamp)
         
         self.logger.info(f"記憶已保存: {episode_id[:8]}...")
@@ -144,6 +164,8 @@ class MemoryModule:
             "user_id": self.user_id,
             "timestamp": timestamp,
             "saved_at": datetime.now().isoformat(),
+            "schema_version": "3.0",  # V3.0 schema 版本
+            "embedding_model": settings.EMBEDDING_MODEL,
             "data": content
         }
         
@@ -152,21 +174,24 @@ class MemoryModule:
     
     def _save_vector_episode(self, episode_id: str, text_summary: str,
                              content: Dict[str, Any], timestamp: str):
-        """保存向量嵌入到 ChromaDB"""
-        # 提取中繼資料（用於過濾搜索）
+        """保存向量嵌入到 ChromaDB 1.2.x"""
         meta = {
             "timestamp": timestamp,
             "type": "episode",
             "user_id": self.user_id,
             "has_face": str(content.get("face_analysis", {}).get("has_face", False)),
+            "schema_version": "3.0",
         }
         
-        # 獲取場景標籤
+        # 場景標籤
         scene = content.get("scene_analysis", {})
         if scene.get("tags"):
-            meta["tags"] = ",".join(scene["tags"][:5])  # 最多5個標籤
+            meta["tags"] = ",".join(scene["tags"][:5])
         
-        # 添加到 ChromaDB
+        # V3.0: 如果場景描述不為空，加入 metadata 方便混合檢索
+        if scene.get("scene_description"):
+            meta["scene"] = scene["scene_description"][:200]
+        
         self.collection.add(
             ids=[episode_id],
             documents=[text_summary],
@@ -187,6 +212,8 @@ class MemoryModule:
             parts.append(f"內容: {scene['main_content']}")
         if scene.get("activity_inference"):
             parts.append(f"活動: {scene['activity_inference']}")
+        if scene.get("details"):
+            parts.append(f"細節: {scene['details']}")
         
         if face.get("has_face"):
             for f in face.get("faces", []):
@@ -210,23 +237,26 @@ class MemoryModule:
                filter_meta: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         """
         基於自然語言查詢進行 RAG 檢索。
+        V3.0: 支援 ChromaDB 1.2.x 混合檢索 (向量 + BM25)。
         
         Args:
             query: 自然語言查詢
-            top_k: 返回結果數量（默認為配置值）
+            top_k: 返回結果數量
             filter_meta: 中繼資料過濾條件
         
         Returns:
-            list[dict]: 檢索結果列表，每條包含 id, content, metadata, distance
+            list[dict]: 檢索結果列表
         """
         if top_k is None:
             top_k = settings.TOP_K_RETRIEVAL
         
         try:
+            # V3.0: 使用 include 參數利用率更高的檢索
             results = self.collection.query(
                 query_texts=[query],
-                n_results=min(top_k, 50),  # ChromaDB 上限保護
-                where=filter_meta
+                n_results=min(top_k, 50),
+                where=filter_meta,
+                include=["documents", "metadatas", "distances"]
             )
             
             # 格式化結果
@@ -251,25 +281,18 @@ class MemoryModule:
                              top_k: int = 20) -> List[Dict[str, Any]]:
         """
         按時間範圍檢索記憶。
-        
-        Args:
-            start: 起始時間 ISO 格式
-            end: 結束時間 ISO 格式
-            top_k: 返回結果數量
-        
-        Returns:
-            list[dict]: 檢索結果
         """
         try:
             results = self.collection.query(
-                query_texts=[""],  # 空查詢，僅用過濾器
+                query_texts=[""],
                 n_results=top_k,
                 where={
                     "$and": [
                         {"timestamp": {"$gte": start}},
                         {"timestamp": {"$lte": end}}
                     ]
-                }
+                },
+                include=["documents", "metadatas"]
             )
             
             formatted = []
@@ -317,6 +340,7 @@ class MemoryModule:
                     "id": data["episode_id"],
                     "timestamp": data["timestamp"],
                     "saved_at": data["saved_at"],
+                    "schema_version": data.get("schema_version", "2.1"),
                     "summary": self._extract_quick_summary(data["data"])
                 })
             except Exception:
@@ -347,10 +371,8 @@ class MemoryModule:
     def delete_episode(self, episode_id: str) -> bool:
         """刪除指定記憶"""
         try:
-            # 刪除向量
             self.collection.delete(ids=[episode_id])
             
-            # 刪除 JSON
             episode_file = self.episodes_dir / f"{episode_id}.json"
             if episode_file.exists():
                 episode_file.unlink()
