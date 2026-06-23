@@ -20,11 +20,14 @@ class Settings:
     # ─── 安全配置 ────────────────────────────────────
     SUPERSIGHT_USERNAME: str = os.getenv("SUPERSIGHT_USERNAME", "admin")
     _raw_password: Optional[str] = os.getenv("SUPERSIGHT_PASSWORD")
+    _generated_password: Optional[str] = None
     
     @property
     def SUPERSIGHT_PASSWORD(self) -> str:
         if not self._raw_password or self._raw_password == "change_me_first":
-            return secrets.token_urlsafe(16)
+            if self._generated_password is None:
+                self._generated_password = secrets.token_urlsafe(16)
+            return self._generated_password
         return self._raw_password
     
     @property

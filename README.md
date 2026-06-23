@@ -1,8 +1,8 @@
-# 🔍 SuperSight V2.1 - 本地 AI 記憶體代理
+# 🔍 SuperSight V3.0 - 本地 AI 記憶體代理
 
 **SuperSight** 是一個運行在本地端的 AI 記憶體代理（AI Memory Agent）。它不僅識別圖片內容，更通過時間線和上下文構建用戶的「數字自傳」。
 
-![Version](https://img.shields.io/badge/version-2.1-blue)
+![Version](https://img.shields.io/badge/version-3.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Python](https://img.shields.io/badge/python-3.10%2B-orange)
 ![GPU VRAM](https://img.shields.io/badge/VRAM-16GB%20%2F%2024GB-lightgrey)
@@ -1046,7 +1046,7 @@ def validate_file(file_path: str) -> Tuple[bool, str]:
 
 ## 🔄 版本歷史 (Changelog)
 
-### V2.1 (2026-06-22) — 當前版本
+### V3.0 (2026-06-23) — 當前版本
 
 | 變更編號 | 模塊 | 變更內容 | 影響等級 |
 |----------|------|----------|----------|
@@ -1056,6 +1056,16 @@ def validate_file(file_path: str) -> Tuple[bool, str]:
 | **C-04** | 資源管理 | 增加顯存監控與 OOM 降級策略，調整性能預期 | 🟠 中 |
 | **C-05** | 安全基線 | 強制強密碼策略，增加文件類型白名單校驗 | 🟢 低 |
 | **C-06** | 文檔指引 | 補充 Windows C++ Build Tools 及 macOS Metal 支援說明 | 🟢 低 |
+| **S-01** | Bug修復 | 修復密碼緩存Bug：每次調用不會再生成新密碼 | 🔴 高 |
+| **S-02** | Bug修復 | 修復WebP魔術字節校驗：增加完整簽名驗證 | 🔴 高 |
+| **S-03** | Bug修復 | 修復異步事件循環衝突：智能處理Gradio環境 | 🟠 中 |
+| **S-04** | Bug修復 | 統一版本標註為V3.0 | 🟢 低 |
+| **S-05** | Bug修復 | 修復Gradio API相容性：Warning改為Markdown | 🟢 低 |
+| **S-06** | 新特性 | 新增Blackwell FP4硬體加速支援 | 🟠 中 |
+| **S-07** | 新特性 | 支援Qwen3-VL-8B FP4模型 | 🟠 中 |
+| **S-08** | 新特性 | 支援1M tokens超長上下文窗口 | 🟠 中 |
+| **S-09** | 新特性 | 原生4K解析度處理（不再強制縮放） | 🟠 中 |
+| **S-10** | 新特性 | 升級InsightFace至buffalo_m模型 | 🟢 低 |
 
 ### V2.0 (2026-05-01)
 

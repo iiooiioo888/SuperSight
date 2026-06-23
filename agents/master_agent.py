@@ -479,11 +479,22 @@ class SuperSightMasterAgent:
     def process(self, image_path: str, query: str = "") -> str:
         """同步處理單張圖片"""
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            result = loop.run_until_complete(self.process_async(image_path, query))
-            loop.close()
-            return result
+            # 檢查是否已有運行的事件循環（例如在 Gradio 中）
+            try:
+                loop = asyncio.get_running_loop()
+                # 如果有運行中的循環，使用 asyncio.run_coroutine_threadsafe
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run, 
+                        self.process_async(image_path, query)
+                    )
+                    result = future.result()
+                    return result
+            except RuntimeError:
+                # 沒有運行中的循環，直接使用 asyncio.run
+                result = asyncio.run(self.process_async(image_path, query))
+                return result
         except Exception as e:
             self.logger.error(f"V3.0 同步處理失敗: {e}")
             self.last_aggregated_data = None

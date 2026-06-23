@@ -251,8 +251,8 @@ def create_web_interface():
         )
         
         if settings.is_password_default:
-            gr.Warning(
-                f"⚠️ 檢測到未設置強密碼。\n"
+            gr.Markdown(
+                f"⚠️ **檢測到未設置強密碼。**\n"
                 f"本次會話臨時密碼: **`{settings.SUPERSIGHT_PASSWORD}`**\n"
                 "請在環境變量中設置 `SUPERSIGHT_PASSWORD` 以固化密碼。"
             )

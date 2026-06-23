@@ -1,5 +1,5 @@
 """
-SuperSight V2.1 - 安全工具模組
+SuperSight V3.0 - 安全工具模組
 提供文件校驗、身份鑑權、審計日誌等安全功能。
 """
 import os
@@ -51,27 +51,30 @@ def validate_file(file_path: str) -> Tuple[bool, str]:
     try:
         with open(file_path, "rb") as f:
             header = f.read(12)
-        
+    
         magic_bytes = {
-            b"\xff\xd8": "JPEG",
-            b"\x89PNG": "PNG",
-            b"RIFF": "WEBP",  # WEBP 以 RIFF 開頭
+            b"\xff\xd8": ("JPEG", [".jpg", ".jpeg"]),
+            b"\x89PNG": ("PNG", [".png"]),
+            b"RIFF": ("WEBP", [".webp"]),  # WEBP 以 RIFF 開頭，需進一步驗證
         }
         
         is_valid_magic = False
-        for magic, fmt in magic_bytes.items():
+        for magic, (fmt, valid_exts) in magic_bytes.items():
             if header.startswith(magic):
+                # WEBP 需要進一步驗證（RIFF....WEBP）
+                if fmt == "WEBP":
+                    if len(header) < 12 or header[8:12] != b"WEBP":
+                        continue  # 不是真正的 WEBP 文件
+                
                 is_valid_magic = True
                 # 簡單驗證擴展名與魔術字節一致
-                if fmt == "JPEG" and ext not in (".jpg", ".jpeg"):
-                    return False, f"文件實際為 JPEG 格式，但擴展名為 '{ext}'"
-                if fmt == "PNG" and ext != ".png":
-                    return False, f"文件實際為 PNG 格式，但擴展名為 '{ext}'"
+                if ext not in valid_exts:
+                    return False, f"文件實際為 {fmt} 格式，但擴展名為 '{ext}'"
                 break
         
         if not is_valid_magic:
             return False, "文件內容不是有效的圖片格式"
-        
+    
     except Exception as e:
         return False, f"文件校驗失敗: {e}"
     
