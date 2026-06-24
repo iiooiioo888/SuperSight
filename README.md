@@ -143,7 +143,7 @@ stateDiagram-v2
 ├──────────────────┬──────────────────┤
 │ Branch A: 人臉   │ Branch B: 場景   │
 │                  │                  │
-│ InsightFace      │ Qwen2.5-VL      │
+│ InsightFace      │ Qwen3-VL        │
 │ 檢測人臉框       │ Base64 編碼     │
 │ 年齡/性別預測    │ Ollama API 調用  │
 │ 裁剪人臉區域     │ JSON 回應解析    │
@@ -170,7 +170,7 @@ stateDiagram-v2
 ┌─────────────────────────────────────┐
 │ 4. 記憶存儲                         │
 │    - JSON → episodes/{uuid}.json    │
-│    - 向量 → ChromaDB (bge-m3)       │
+│    - 向量 → ChromaDB (bge-m4)       │
 │    - 更新 profile.json              │
 └─────────────────────────────────────┘
         │
@@ -207,7 +207,7 @@ check_resources()
         ▼
 ┌─────────────────────────────────────┐
 │ 1. Query Embedding                  │
-│    用戶查詢 → bge-m3 → 向量        │
+│    用戶查詢 → bge-m4 → 向量        │
 └─────────────────────────────────────┘
         │
         ▼
@@ -531,7 +531,7 @@ from agents.scene_agent import SceneUnderstandingAgent
 
 agent = SceneUnderstandingAgent(
     base_url="http://localhost:11434",
-    model_name="qwen2.5-vl:7b-instruct-q4_k_m"
+    model_name="qwen3-vl:8b-fp4"
 )
 
 # 檢查服務可用性
@@ -717,7 +717,7 @@ export SUPERSIGHT_PORT="7860"
 
 # Ollama 配置
 export OLLAMA_BASE_URL="http://localhost:11434"
-export VLM_MODEL_NAME="qwen2.5-vl:7b-instruct-q4_k_m"
+export VLM_MODEL_NAME="qwen3-vl:8b-fp4"
 
 # GPU 配置
 export CUDA_VISIBLE_DEVICES="0"
