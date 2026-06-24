@@ -1,5 +1,5 @@
 """
-SuperSight V2.1 - 資源監控模組
+SuperSight V3.0 - 資源監控模組
 提供顯存監控與 OOM 降級策略，防止顯存溢出崩潰。
 """
 import logging
