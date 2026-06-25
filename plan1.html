@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>硬件十年計劃 · 互動式 Dashboard v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0b0c10;--bg2:#111318;--bg3:#181b24;--bg4:#1f2330;
+  --accent:#e8a830;--accent2:#c48a20;--accent-g:rgba(232,168,48,.12);
+  --txt:#f0ece4;--txt2:#a8a29e;--txt3:#6b6660;
+  --red:#e85454;--red-g:rgba(232,84,84,.12);
+  --grn:#4ae88a;--grn-g:rgba(74,232,138,.12);
+  --blu:#5a9ee8;--blu-g:rgba(90,158,232,.12);
+  --brd:rgba(255,255,255,.06);--brd2:rgba(232,168,48,.18);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'Source Serif 4',Georgia,serif;background:var(--bg);color:var(--txt);line-height:1.7;overflow-x:hidden;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 15% 10%,rgba(232,168,48,.035) 0%,transparent 50%),radial-gradient(ellipse at 85% 80%,rgba(90,158,232,.025) 0%,transparent 50%);pointer-events:none;z-index:0}
+
+/* NAV */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(11,12,16,.88);backdrop-filter:blur(24px);border-bottom:1px solid var(--brd)}
+.topnav .inner{max-width:1320px;margin:0 auto;display:flex;align-items:center;height:54px;padding:0 1.5rem;gap:1.5rem}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:.78rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);white-space:nowrap;flex-shrink:0}
+.tabs{display:flex;gap:.2rem;overflow-x:auto;scrollbar-width:none;flex:1;justify-content:center}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{font-family:'DM Mono',monospace;font-size:.67rem;font-weight:400;letter-spacing:.04em;color:var(--txt3);background:none;border:none;padding:.45rem .8rem;border-radius:5px;cursor:pointer;white-space:nowrap;transition:all .25s;position:relative}
+.tab-btn:hover{color:var(--txt2);background:rgba(255,255,255,.04)}
+.tab-btn.active{color:var(--accent);background:var(--accent-g)}
+.tab-btn.active::after{content:'';position:absolute;bottom:-1px;left:20%;right:20%;height:2px;background:var(--accent);border-radius:1px}
+
+main{position:relative;z-index:1;padding-top:54px}
+.tab-content{display:none;animation:tabIn .35s ease both;max-width:1320px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.tab-content.active{display:block}
+@keyframes tabIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.sec-head{margin-bottom:2rem}
+.sec-num{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+.sec-head h2{font-family:'Syne',sans-serif;font-weight:700;font-size:clamp(1.4rem,3vw,2rem);line-height:1.2}
+.sec-head p{margin-top:.4rem;color:var(--txt2);max-width:600px;font-size:.92rem}
+
+/* KPI */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:1px;background:var(--brd);border:1px solid var(--brd);border-radius:12px;overflow:hidden;margin-bottom:2.5rem}
+.kpi{background:var(--bg2);padding:1.3rem 1.4rem}
+.kpi-val{font-family:'Syne',sans-serif;font-weight:700;font-size:1.6rem;color:var(--accent);line-height:1.2}
+.kpi-lbl{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--txt3);margin-top:.2rem}
+
+/* HARDWARE DETAIL CARDS */
+.hw-section{margin-bottom:2.5rem}
+.hw-section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.15rem;padding:.8rem 0;border-bottom:2px solid var(--accent);margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.hw-section-title .icon{width:28px;height:28px;border-radius:6px;background:var(--accent-g);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0}
+
+.hw-detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+
+.hw-block{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;overflow:hidden;transition:border-color .3s}
+.hw-block:hover{border-color:var(--brd2)}
+
+.hw-block-hd{padding:1rem 1.2rem .6rem;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.hw-block-hd h4{font-family:'Syne',sans-serif;font-weight:600;font-size:.92rem}
+.hw-block-hd .badge{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:.08em;text-transform:uppercase;padding:.12rem .45rem;border-radius:3px}
+
+.hw-block-body{max-height:0;overflow:hidden;transition:max-height .45s ease}
+.hw-block.open .hw-block-body{max-height:1200px}
+.hw-block-inner{padding:0 1.2rem 1.2rem}
+
+.spec-tbl{width:100%;border-collapse:collapse;font-size:.82rem}
+.spec-tbl td{padding:.35rem 0;border-bottom:1px solid var(--brd);vertical-align:top}
+.spec-tbl td:first-child{color:var(--txt3);font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.03em;white-space:nowrap;width:42%;padding-right:1rem}
+.spec-tbl td:last-child{color:var(--txt);font-weight:500}
+.spec-tbl tr:last-child td{border-bottom:none}
+.spec-tbl .hl{color:var(--accent);font-weight:600}
+.spec-tbl .dim{color:var(--txt3);font-style:italic}
+
+/* GPU COMPARISON TABLE */
+.cmp-wrap{overflow-x:auto;border:1px solid var(--brd);border-radius:12px;background:var(--bg2);margin:1rem 0}
+.cmp-wrap table{width:100%;border-collapse:collapse;font-size:.78rem;min-width:700px}
+.cmp-wrap thead{background:var(--bg3)}
+.cmp-wrap th{font-family:'DM Mono',monospace;font-weight:500;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.7rem .8rem;border-bottom:1px solid var(--brd);white-space:nowrap}
+.cmp-wrap td{padding:.6rem .8rem;border-bottom:1px solid var(--brd);color:var(--txt2);vertical-align:top}
+.cmp-wrap tr:last-child td{border-bottom:none}
+.cmp-wrap td:first-child{color:var(--txt);font-weight:500}
+.cmp-wrap tr:hover td{background:var(--accent-g)}
+.cmp-highlight{background:var(--accent-g) !important}
+.cmp-wrap .prc{font-family:'DM Mono',monospace;font-weight:500;color:var(--accent)}
+
+/* BADGE COLORS */
+.bdg{display:inline-block;font-family:'DM Mono',monospace;font-size:.55rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:.12rem .4rem;border-radius:3px;vertical-align:middle}
+.bdg-r{color:var(--red);background:var(--red-g)}
+.bdg-y{color:var(--accent);background:var(--accent-g)}
+.bdg-g{color:var(--grn);background:var(--grn-g)}
+.bdg-b{color:var(--blu);background:var(--blu-g)}
+
+/* ARCHITECTURE */
+.arch{background:var(--bg4);border:1px solid var(--brd);border-radius:12px;padding:2rem;margin:1.5rem 0;overflow-x:auto}
+.arch-row{display:flex;justify-content:center;gap:1.2rem;margin-bottom:1rem;flex-wrap:wrap}
+.arch-box{border:1px solid var(--brd2);border-radius:8px;padding:.8rem 1.2rem;text-align:center;min-width:150px;background:var(--bg3);transition:all .3s}
+.arch-box:hover{border-color:var(--accent);box-shadow:0 0 20px var(--accent-g)}
+.arch-box.hl{border-color:var(--accent);background:var(--accent-g)}
+.arch-box .bl{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);margin-bottom:.2rem}
+.arch-box .bv{font-family:'Syne',sans-serif;font-weight:600;font-size:.82rem;color:var(--txt)}
+.arch-box .bs{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--txt3);margin-top:.15rem}
+.arch-arr{text-align:center;color:var(--txt3);font-family:'DM Mono',monospace;font-size:.65rem;padding:.3rem 0;letter-spacing:.05em}
+
+/* TIMELINE */
+.tl-track{display:flex;gap:0;margin:2rem 0;border-radius:8px;overflow:hidden;position:relative;cursor:pointer}
+.tl-seg{flex:1;padding:.7rem .5rem;text-align:center;background:var(--bg3);border-right:1px solid var(--bg);transition:all .3s}
+.tl-seg:last-child{border-right:none}
+.tl-seg:hover{background:var(--bg4)}
+.tl-seg.active{background:var(--accent-g);box-shadow:inset 0 -3px 0 var(--accent)}
+.tl-seg .sy{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--accent);letter-spacing:.05em}
+.tl-seg .sn{font-family:'Syne',sans-serif;font-size:.72rem;font-weight:600;color:var(--txt);margin-top:.15rem}
+.tl-detail{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:1.8rem;margin-top:1rem;animation:tabIn .3s ease both;min-height:200px}
+.tl-detail h3{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:var(--accent);margin-bottom:.3rem}
+.tl-detail .sub{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--txt3);letter-spacing:.08em;margin-bottom:1rem}
+.tl-detail .desc{color:var(--txt2);font-size:.88rem;margin-bottom:1rem;line-height:1.7}
+.tl-costs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
+.tl-chip{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:500;padding:.25rem .6rem;border-radius:4px;background:var(--accent-g);color:var(--accent)}
+.tl-chip.out{background:var(--red-g);color:var(--red)}
+.tl-chip.in{background:var(--grn-g);color:var(--grn)}
+
+/* CHART */
+.chart-wrap{background:var(--bg3);border:1px solid var(--brd);border-radius:12px;padding:1.5rem;margin:1.5rem 0;position:relative}
+.chart-wrap svg{width:100%;height:auto;display:block}
+.chart-line{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.chart-area{opacity:.15}
+.chart-dot{fill:var(--accent);stroke:var(--bg3);stroke-width:2;cursor:pointer;transition:r .2s}
+.chart-dot:hover{r:7}
+.chart-grid{stroke:var(--brd);stroke-width:1}
+.chart-label{font-family:'DM Mono',monospace;font-size:10px;fill:var(--txt3)}
+.chart-val{font-family:'DM Mono',monospace;font-size:10px;fill:var(--accent);opacity:0;transition:opacity .2s}
+.chart-dot:hover+.chart-val{opacity:1}
+.chart-event{stroke:var(--red);stroke-width:1;stroke-dasharray:4 3;opacity:.4}
+.chart-event-label{font-family:'DM Mono',monospace;font-size:9px;fill:var(--red);opacity:.6}
+.tooltip{position:absolute;background:var(--bg4);border:1px solid var(--brd2);border-radius:6px;padding:.5rem .8rem;font-family:'DM Mono',monospace;font-size:.7rem;color:var(--accent);pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap;z-index:10}
+
+/* RISK */
+.risk-grid{display:grid;grid-template-columns:auto repeat(5,1fr);gap:2px;margin:1.5rem 0;font-family:'DM Mono',monospace;font-size:.6rem}
+.risk-grid .rh{padding:.5rem;text-align:center;color:var(--txt3);font-size:.58rem;letter-spacing:.08em;text-transform:uppercase}
+.risk-grid .rl{padding:.5rem .8rem;display:flex;align-items:center;color:var(--txt3);font-size:.58rem;letter-spacing:.05em}
+.risk-cell{padding:.4rem;border-radius:4px;min-height:50px;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:var(--txt3);text-align:center;position:relative;cursor:default;transition:transform .2s}
+.risk-cell:hover{transform:scale(1.05);z-index:2}
+.risk-cell.has-risk{cursor:pointer}
+.risk-cell.has-risk::after{content:attr(data-label);position:absolute;font-size:.5rem;color:var(--txt);background:rgba(0,0,0,.7);padding:.15rem .4rem;border-radius:3px;white-space:nowrap;opacity:0;bottom:105%;left:50%;transform:translateX(-50%);transition:opacity .2s;pointer-events:none}
+.risk-cell.has-risk:hover::after{opacity:1}
+.r1{background:var(--grn-g)}.r2{background:rgba(74,232,138,.06)}.r3{background:var(--accent-g)}.r4{background:rgba(232,84,84,.08)}.r5{background:var(--red-g)}
+.risk-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.risk-dot.hi{background:var(--red)}.risk-dot.md{background:var(--accent)}.risk-dot.lo{background:var(--grn)}
+
+.risk-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.8rem;margin-top:1rem}
+.risk-item{background:var(--bg3);border:1px solid var(--brd);border-radius:8px;padding:1rem 1.2rem;border-left:3px solid var(--brd);cursor:pointer;transition:all .25s}
+.risk-item:hover{border-color:var(--brd2);background:var(--bg4)}
+.risk-item.open{border-left-color:var(--accent)}
+.risk-item .ri-hd{display:flex;justify-content:space-between;align-items:center}
+.risk-item .ri-title{font-family:'Syne',sans-serif;font-weight:600;font-size:.88rem}
+.risk-item .ri-body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.risk-item.open .ri-body{max-height:250px}
+.risk-item .ri-inner{padding-top:.6rem;font-size:.82rem;color:var(--txt2);line-height:1.6}
+.risk-item .ri-action{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--accent);margin-top:.4rem}
+
+/* MAINTENANCE */
+.maint-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+.maint-card{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:1.4rem}
+.maint-card h4{font-family:'Syne',sans-serif;font-weight:600;font-size:.9rem;margin-bottom:.8rem;color:var(--txt)}
+.ck-item{display:flex;align-items:flex-start;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--brd);font-size:.82rem;color:var(--txt2);cursor:pointer;user-select:none;transition:color .2s}
+.ck-item:last-child{border-bottom:none}
+.ck-item:hover{color:var(--txt)}
+.ck-box{width:1rem;height:1rem;border:2px solid var(--accent2);border-radius:3px;flex-shrink:0;margin-top:.15rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ck-item.done .ck-box{background:var(--accent);border-color:var(--accent)}
+.ck-item.done .ck-box::after{content:'✓';font-size:.6rem;color:var(--bg);font-weight:700}
+.ck-item.done{color:var(--txt3);text-decoration:line-through;text-decoration-color:var(--txt3)}
+.ck-freq{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--accent);background:var(--accent-g);padding:.1rem .35rem;border-radius:3px;margin-left:auto;white-space:nowrap;flex-shrink:0}
+
+/* COST BARS */
+.cost-bars{margin:1.5rem 0}
+.cost-bar-row{display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem}
+.cost-bar-lbl{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--txt2);min-width:100px;text-align:right;flex-shrink:0}
+.cost-bar-track{flex:1;height:26px;background:var(--bg3);border-radius:4px;overflow:hidden}
+.cost-bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:.6rem;font-family:'DM Mono',monospace;font-size:.62rem;font-weight:500;color:var(--bg);transition:width 1.2s cubic-bezier(.22,1,.36,1);min-width:fit-content;white-space:nowrap}
+.cb-a{background:var(--accent)}.cb-b{background:var(--accent2)}.cb-c{background:var(--blu)}.cb-d{background:var(--txt3)}
+
+/* BURDEN */
+.burden{display:flex;gap:1px;background:var(--brd);border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin:1.5rem 0}
+.burden-p{flex:1;background:var(--bg2);padding:1rem .8rem;text-align:center;transition:background .3s}
+.burden-p:hover{background:var(--bg3)}
+.burden-p .bp-l{font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);margin-bottom:.3rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.burden-p .bp-v{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;color:var(--accent)}
+.burden-p .bp-s{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--txt3);margin-top:.15rem}
+
+/* NEXT ACTION */
+.next-action{background:linear-gradient(135deg,var(--bg4),var(--bg3));border:1px solid var(--brd2);border-radius:12px;padding:1.5rem 2rem;margin:1.5rem 0;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap}
+.next-action .na-icon{width:48px;height:48px;border-radius:50%;background:var(--accent-g);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+.next-action .na-text{flex:1;min-width:200px}
+.next-action .na-label{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:.2rem}
+.next-action .na-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem}
+.next-action .na-sub{font-size:.82rem;color:var(--txt2);margin-top:.15rem}
+.next-action .na-cost{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:500;color:var(--accent);white-space:nowrap}
+
+/* PRICE ALERT */
+.price-alert{background:var(--red-g);border:1px solid rgba(232,84,84,.25);border-radius:8px;padding:1rem 1.2rem;margin:1rem 0;display:flex;align-items:flex-start;gap:.8rem;font-size:.82rem;color:var(--txt2)}
+.price-alert .pa-icon{font-size:1.1rem;flex-shrink:0;margin-top:.1rem}
+.price-alert strong{color:var(--red)}
+
+/* NOTES BOX */
+.note-box{background:var(--bg4);border:1px solid var(--brd);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:1rem 1.2rem;margin:1rem 0;font-size:.82rem;color:var(--txt2);line-height:1.7}
+.note-box strong{color:var(--txt)}
+
+footer{padding:3rem 0 2rem;text-align:center;border-top:1px solid var(--brd);max-width:1320px;margin:0 auto}
+footer p{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--txt3);letter-spacing:.06em}
+
+@media(max-width:768px){
+  .tab-content{padding:1.5rem 1rem 3rem}
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .hw-detail-grid{grid-template-columns:1fr}
+  .tl-track{flex-wrap:wrap}
+  .tl-seg{flex:none;width:50%}
+  .arch-row{flex-direction:column;align-items:center}
+  .burden{flex-direction:column}
+  .cost-bar-lbl{min-width:70px;font-size:.6rem}
+  .risk-grid{font-size:.5rem}
+  .next-action{flex-direction:column;text-align:center}
+  .cmp-wrap table{min-width:600px}
+}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent2)}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="inner">
+    <div class="logo">10Y Plan</div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="t-overview">概覽</button>
+      <button class="tab-btn" data-tab="t-hw">硬件</button>
+      <button class="tab-btn" data-tab="t-tl">時間線</button>
+      <button class="tab-btn" data-tab="t-fin">財務</button>
+      <button class="tab-btn" data-tab="t-risk">風險</button>
+      <button class="tab-btn" data-tab="t-maint">維護</button>
+    </div>
+  </div>
+</nav>
+
+<main>
+
+<!-- ═══════ OVERVIEW ═══════ -->
+<div class="tab-content active" id="t-overview">
+  <div class="sec-head">
+    <p class="sec-num">Hardware Full-Lifecycle Plan · v2</p>
+    <h2>硬件全生命周期 · 十年計劃</h2>
+    <p>雙路 EPYC 7K62 + 雙 A40 NVLink 推理伺服器，配合 R7 5825U ×3 Docker 集群。每月固定 ¥3,200，覆蓋十年全部開支。</p>
+  </div>
+
+  <div class="kpi-row" id="kpi-row">
+    <div class="kpi"><div class="kpi-val" data-count="83714" data-prefix="¥">¥0</div><div class="kpi-lbl">建設期投入</div></div>
+    <div class="kpi"><div class="kpi-val" data-count="3200" data-prefix="¥">¥0</div><div class="kpi-lbl">月均負擔</div></div>
+    <div class="kpi"><div class="kpi-val" data-count="360000" data-prefix="¥">¥0</div><div class="kpi-lbl">十年總存入</div></div>
+    <div class="kpi"><div class="kpi-val" data-count="96" data-prefix="" data-suffix=" GB">0</div><div class="kpi-lbl">NVLink 顯存池</div></div>
+    <div class="kpi"><div class="kpi-val" data-count="235000" data-prefix="≈¥">¥0</div><div class="kpi-lbl">結束餘額</div></div>
+  </div>
+
+  <div class="sec-head"><p class="sec-num">System Architecture</p><h2>系統架構</h2></div>
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-box hl">
+        <div class="bl">主伺服器 · 4U</div>
+        <div class="bv">EPYC 7K62 ×2 + A40 ×2 NVLink</div>
+        <div class="bs">96GB 顯存池 · 112.5 GB/s NVLink · 512GB DDR4 ECC</div>
+        <div class="bs">1,920 CUDA · 336 Tensor · U.2 NVMe RAID 5 · UPS 2200VA</div>
+      </div>
+    </div>
+    <div class="arch-arr">↕ vLLM / Ollama HTTP API · 10GbE Intel X540-T2 ↕</div>
+    <div class="arch-row">
+      <div class="arch-box"><div class="bl">Node 1 · Master</div><div class="bv">Gitea + Drone CI</div><div class="bs">代碼 · CI/CD · Traefik</div></div>
+      <div class="arch-box"><div class="bl">Node 2 · Master</div><div class="bv">PostgreSQL + Redis</div><div class="bs">數據庫 · 緩存</div></div>
+      <div class="arch-box"><div class="bl">Node 3 · Worker</div><div class="bv">Prometheus + Grafana</div><div class="bs">監控 · Loki · MinIO</div></div>
+    </div>
+    <div class="arch-arr">K3s 編排 · R7 5825U ×3 · 8C/16T · 48GB 總內存 · 總功耗 ~35W</div>
+  </div>
+
+  <div class="sec-head" style="margin-top:2rem"><p class="sec-num">Monthly Burden</p><h2>月度負擔（始終穩定）</h2></div>
+  <div class="burden">
+    <div class="burden-p"><div class="bp-l">建設期</div><div class="bp-v">¥4,386</div><div class="bp-s">第 0-20 月</div></div>
+    <div class="burden-p"><div class="bp-l">第一維護期</div><div class="bp-v">¥3,215</div><div class="bp-s">第 21-60 月</div></div>
+    <div class="burden-p"><div class="bp-l">★ 刷新 I</div><div class="bp-v">¥3,215</div><div class="bp-s">第 60-72 月</div></div>
+    <div class="burden-p"><div class="bp-l">第二維護期</div><div class="bp-v">¥3,200</div><div class="bp-s">第 73-108 月</div></div>
+    <div class="burden-p"><div class="bp-l">★ 刷新 II</div><div class="bp-v">¥3,200</div><div class="bp-s">第 108-120 月</div></div>
+  </div>
+
+  <div class="next-action">
+    <div class="na-icon">⚡</div>
+    <div class="na-text">
+      <div class="na-label">下一步行動</div>
+      <div class="na-title">開始建設期：採購第一代平台硬件</div>
+      <div class="na-sub">主伺服器 + Docker 集群，預計 20 個月內完成部署</div>
+    </div>
+    <div class="na-cost">¥83,714</div>
+  </div>
+</div>
+
+<!-- ═══════ HARDWARE ═══════ -->
+<div class="tab-content" id="t-hw">
+  <div class="sec-head"><p class="sec-num">01 — Hardware · Detailed Specs</p><h2>第一代硬件配置 · 完整規格</h2></div>
+
+  <div class="price-alert">
+    <span class="pa-icon">⚠️</span>
+    <div><strong>2026 年內存危機提醒：</strong>DDR5 RDIMM 價格已較 2024 年上漲 2-4 倍，128GB DDR5 RDIMM 單條報價可達 $4,650。(citation:7) DDR4 也因原廠停產而出現結構性短缺。(citation:6) 此方案採用 DDR4 ECC，已於建設期一次性購齊全部 16 條，規避後續漲價風險。(citation:5)</div>
+  </div>
+
+  <!-- CPU -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">⬡</span>計算核心 · CPU + 主板 + 內存</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>EPYC 7K62 · CPU ×2</h4><span class="bdg bdg-b">Zen 2</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>架構</td><td>AMD Zen 2 · Rome</td></tr>
+            <tr><td>核心 / 線程</td><td class="hl">48C / 96T ×2 = 96C / 192T</td></tr>
+            <tr><td>基礎頻率</td><td>2.0 GHz</td></tr>
+            <tr><td>加速頻率</td><td>3.2 GHz</td></tr>
+            <tr><td>L3 緩存</td><td>192 MB ×2（每顆 192MB）</td></tr>
+            <tr><td>TDP</td><td>155W ×2 = 310W</td></tr>
+            <tr><td>插槽</td><td>SP3 (LGA 4094)</td></tr>
+            <tr><td>PCIe</td><td>PCIe 4.0 ×128 lanes / 每顆</td></tr>
+            <tr><td>內存通道</td><td>8ch DDR4 ×2 = 16ch 總計</td></tr>
+            <tr><td>製程</td><td>7nm TSMC</td></tr>
+            <tr><td>上市年份</td><td class="dim">2019（架構年齡 ~7 年）</td></tr>
+            <tr><td>單價</td><td class="hl">¥3,500/顆</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>超微 H12DSi-N6 · 主板</h4><span class="bdg bdg-y">雙路 SP3</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>芯片組</td><td>AMD SP3</td></tr>
+            <tr><td>CPU 插槽</td><td>Socket SP3 ×2</td></tr>
+            <tr><td>內存插槽</td><td>DDR4 ECC DIMM ×16（8ch/CPU）</td></tr>
+            <tr><td>最大內存</td><td>4 TB（256GB LRDIMM ×16）</td></tr>
+            <tr><td>PCIe 插槽</td><td>4× PCIe 4.0 x16 + 2× PCIe 4.0 x8</td></tr>
+            <tr><td>M.2</td><td>1× M.2 2280 PCIe 4.0 x4</td></tr>
+            <tr><td>SATA</td><td>16× SATA3 6Gb/s</td></tr>
+            <tr><td>網絡</td><td>2× 10GbE（板載） + 1× IPMI</td></tr>
+            <tr><td>IPMI/BMC</td><td>AST2500 遠程管理（虛擬KVM）</td></tr>
+            <tr><td>板型</td><td>E-ATX (13" × 13")</td></tr>
+            <tr><td>價格</td><td class="hl">¥2,800</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>DDR4 ECC 32GB ×16 = 512GB</h4><span class="bdg bdg-g">已鎖定</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>類型</td><td>DDR4 ECC RDIMM</td></tr>
+            <tr><td>單條容量</td><td>32 GB</td></tr>
+            <tr><td>數量</td><td class="hl">16 條 = 512 GB 總計</td></tr>
+            <tr><td>頻率</td><td>3200 MHz (DDR4-3200)</td></tr>
+            <tr><td>帶寬</td><td>~204 GB/s（8ch × 25.6 GB/s）</td></tr>
+            <tr><td>配置</td><td>每 CPU 8 條，佔滿全部插槽</td></tr>
+            <tr><td>延遲</td><td>CL22 (典型)</td></tr>
+            <tr><td>ECC</td><td>是（SECDED 單錯糾正 / 雙錯檢測）</td></tr>
+            <tr><td>單價</td><td class="hl">¥725/條</td></tr>
+            <tr><td>小計</td><td class="hl">¥11,600</td></tr>
+            <tr><td colspan="2" class="dim">⚠ 2026 年 DDR4 因原廠停產已出現結構性短缺，現貨價持續上漲。(citation:6) 建設期一次購齊，規避後續成本。</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GPU -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">◈</span>GPU 推理 · A40 ×2 + NVLink</div>
+
+    <!-- A40 vs Competitors -->
+    <div class="sec-head" style="margin-bottom:1rem"><h3 style="font-size:.95rem;font-family:'Syne';font-weight:600">A40 與同代/現役 GPU 對比</h3><p style="font-size:.8rem">基於 Ampere GA102 核心，A40 與 RTX 3090 共享相同架構但顯存翻倍。(citation:9)</p></div>
+
+    <div class="cmp-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>規格</th>
+            <th style="background:var(--accent-g)">A40 ×2（你的配置）</th>
+            <th>RTX 3090</th>
+            <th>A100 40GB PCIe</th>
+            <th>RTX 4090</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>架構</td>
+            <td class="cmp-highlight">Ampere GA102</td>
+            <td>Ampere GA102-300</td>
+            <td>Ampere GA100</td>
+            <td>Ada Lovelace AD102</td>
+          </tr>
+          <tr>
+            <td>顯存</td>
+            <td class="cmp-highlight">48 GB ×2 = 96GB（NVLink 池化）</td>
+            <td>24 GB</td>
+            <td>40 GB</td>
+            <td>24 GB</td>
+          </tr>
+          <tr>
+            <td>顯存類型</td>
+            <td class="cmp-highlight">GDDR6 ECC</td>
+            <td>GDDR6X</td>
+            <td>HBM2e</td>
+            <td>GDDR6X</td>
+          </tr>
+          <tr>
+            <td>顯存帶寬</td>
+            <td class="cmp-highlight">695.8 GB/s ×2 (citation:9)</td>
+            <td>936.2 GB/s</td>
+            <td>1,555 GB/s</td>
+            <td>1,008 GB/s</td>
+          </tr>
+          <tr>
+            <td>CUDA 核心</td>
+            <td class="cmp-highlight">10,752 ×2 = 21,504</td>
+            <td>10,496</td>
+            <td>6,912</td>
+            <td>16,384</td>
+          </tr>
+          <tr>
+            <td>Tensor 核心</td>
+            <td class="cmp-highlight">336 ×2 = 672</td>
+            <td>328</td>
+            <td>432</td>
+            <td>512</td>
+          </tr>
+          <tr>
+            <td>FP16 性能</td>
+            <td class="cmp-highlight">37.42 TFLOPS ×2 (citation:9)</td>
+            <td>35.58 TFLOPS</td>
+            <td>312 TFLOPS（Tensor）</td>
+            <td>82.6 TFLOPS</td>
+          </tr>
+          <tr>
+            <td>TDP</td>
+            <td class="cmp-highlight">300W ×2 = 600W</td>
+            <td>350W</td>
+            <td>250W</td>
+            <td>450W</td>
+          </tr>
+          <tr>
+            <td>散熱</td>
+            <td class="cmp-highlight">被動（無風扇）(citation:9)</td>
+            <td>主動風扇</td>
+            <td>被動</td>
+            <td>主動風扇</td>
+          </tr>
+          <tr>
+            <td>PCIe</td>
+            <td class="cmp-highlight">PCIe 4.0 x16 ×2 (citation:9)</td>
+            <td>PCIe 4.0 x16</td>
+            <td>PCIe 4.0 x16</td>
+            <td>PCIe 4.0 x16</td>
+          </tr>
+          <tr>
+            <td>顯示輸出</td>
+            <td class="cmp-highlight">3× DisplayPort (citation:9)</td>
+            <td>1×HDMI + 3×DP</td>
+            <td>無</td>
+            <td>1×HDMI + 3×DP</td>
+          </tr>
+          <tr>
+            <td>NVLink</td>
+            <td class="cmp-highlight">支持 112.5 GB/s (citation:4)</td>
+            <td>不支持</td>
+            <td>600 GB/s（3 bridge）</td>
+            <td>不支持</td>
+          </tr>
+          <tr>
+            <td>板卡尺寸</td>
+            <td class="cmp-highlight">267mm · 雙槽 (citation:9)</td>
+            <td>336mm · 三槽</td>
+            <td>267mm · 雙槽</td>
+            <td>304mm · 三槽</td>
+          </tr>
+          <tr>
+            <td>2026 單價</td>
+            <td class="cmp-highlight prc">~¥10,000</td>
+            <td class="prc">~¥5,000（二手）</td>
+            <td class="prc">~¥18,000</td>
+            <td class="prc">~¥14,000</td>
+          </tr>
+          <tr>
+            <td>推理適用性</td>
+            <td class="cmp-highlight">48GB ECC 大顯存，70B+ 模型首選</td>
+            <td>24GB 夠 30B 以下</td>
+            <td>HBM 高帶寬但貴</td>
+            <td>帶寬最快但 24GB 不夠 70B</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-box"><strong>為什麼選 A40 而不是 RTX 4090：</strong>推理是 memory-bandwidth-bound 的任務，但更重要的是顯存容量決定了能跑多大的模型。(citation:3) RTX 4090 帶寬更快（1,008 GB/s vs 695.8 GB/s），但只有 24GB，無法裝下 70B Q4 模型。A40 的 48GB ECC 顯存可以容納 70B 模型，兩張通過 NVLink 池化為 96GB 後更可跑 120B+ 模型。(citation:4) 對於你的大模型推理場景，顯存容量 > 帶寬速度。</div>
+
+    <!-- NVLink Detail -->
+    <div class="hw-detail-grid" style="margin-top:1.5rem">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>NVLink 橋接器 · 精確規格</h4><span class="bdg bdg-y">A40 專用</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>產品</td><td>NVIDIA NVLink Bridge for A40</td></tr>
+            <tr><td>雙向帶寬</td><td class="hl">112.5 GB/s (citation:4)</td></tr>
+            <tr><td>對比 PCIe 4.0</td><td>約 3.5× PCIe 4.0 x16 帶寬</td></tr>
+            <tr><td>物理規格</td><td>2-Slot 或 3-Slot 可選 (citation:4)</td></tr>
+            <tr><td>2-Slot 型號</td><td>RTXA6000NVLINK-KIT (citation:4)</td></tr>
+            <tr><td>3-Slot 型號</td><td>RTXA6000NVLINK3S-KIT (citation:4)</td></tr>
+            <tr><td>功能</td><td>顯存池化（96GB 統一地址空間）</td></tr>
+            <tr><td>功能</td><td>GPU 間直接數據傳輸</td></tr>
+            <tr><td>功能</td><td>統一內存訪問（Peer-to-Peer）</td></tr>
+            <tr><td>兼容性</td><td>RTX A6000 / A5500 / A5000 / A40 (citation:4)</td></tr>
+            <tr><td>安裝要求</td><td>兩卡需在相鄰 PCIe x16 插槽</td></tr>
+            <tr><td>安裝要求</td><td>確認主板 slot 間距匹配</td></tr>
+            <tr><td>價格</td><td class="hl">¥2,000（二手/拆機）</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>A40 GPU · 完整規格</h4><span class="bdg bdg-r">被動散熱</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>GPU 核心</td><td>GA102 (Ampere) (citation:9)</td></tr>
+            <tr><td>製程</td><td>8nm Samsung</td></tr>
+            <tr><td>晶體管</td><td>283 億 (citation:9)</td></tr>
+            <tr><td>核心面積</td><td>628 mm² (citation:9)</td></tr>
+            <tr><td>CUDA 核心</td><td class="hl">10,752 (citation:9)</td></tr>
+            <tr><td>RT 核心</td><td>84 (citation:9)</td></tr>
+            <tr><td>Tensor 核心</td><td>336（第三代）(citation:9)</td></tr>
+            <tr><td>TMUs</td><td>336 (citation:9)</td></tr>
+            <tr><td>ROPs</td><td>112 (citation:9)</td></tr>
+            <tr><td>基礎頻率</td><td>1,305 MHz (citation:9)</td></tr>
+            <tr><td>加速頻率</td><td>1,740 MHz (citation:9)</td></tr>
+            <tr><td>FP16 性能</td><td>37.42 TFLOPS (citation:9)</td></tr>
+            <tr><td>FP32 性能</td><td>37.42 TFLOPS (citation:9)</td></tr>
+            <tr><td>FP64 性能</td><td>584.6 GFLOPS (citation:9)</td></tr>
+            <tr><td>顯存</td><td class="hl">48 GB GDDR6 ECC</td></tr>
+            <tr><td>顯存帶寬</td><td>695.8 GB/s (citation:9)</td></tr>
+            <tr><td>顯存總線</td><td>384-bit (citation:9)</td></tr>
+            <tr><td>顯存頻率</td><td>14,500 MHz (citation:9)</td></tr>
+            <tr><td>PCIe 接口</td><td>PCIe 4.0 x16 (citation:9)</td></tr>
+            <tr><td>TDP</td><td>300W (citation:9)</td></tr>
+            <tr><td>供電</td><td>8-pin EPS (citation:9)</td></tr>
+            <tr><td>尺寸</td><td>267mm · 雙槽 (citation:9)</td></tr>
+            <tr><td>散熱</td><td>被動散熱（無風扇）(citation:9)</td></tr>
+            <tr><td>顯示輸出</td><td>3× DisplayPort (citation:9)</td></tr>
+            <tr><td>DirectX</td><td>12 Ultimate (12_2) (citation:9)</td></tr>
+            <tr><td>CUDA 計算能力</td><td>8.6 (citation:9)</td></tr>
+            <tr><td>OpenCL</td><td>3.0 (citation:9)</td></tr>
+            <tr><td>發佈日期</td><td>2020 年 10 月 5 日 (citation:9)</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Storage -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">◉</span>三層存儲架構</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>L1 · 系統盤</h4><span class="bdg bdg-g">SATA SSD</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>型號</td><td>三星 870 EVO 500GB</td></tr>
+            <tr><td>接口</td><td>SATA III 6Gb/s</td></tr>
+            <tr><td>順序讀取</td><td>560 MB/s</td></tr>
+            <tr><td>順序寫入</td><td>530 MB/s</td></tr>
+            <tr><td>隨機 IOPS</td><td>98K 讀 / 88K 寫</td></tr>
+            <tr><td>壽命 (TBW)</td><td>300 TBW</td></tr>
+            <tr><td>用途</td><td>OS + 基礎軟件 + 日誌 + swap</td></tr>
+            <tr><td>價格</td><td class="hl">¥300</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>L2 · 熱數據 · U.2 NVMe 陣列</h4><span class="bdg bdg-y">RAID 5</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>接口</td><td>U.2 NVMe PCIe 4.0 x4</td></tr>
+            <tr><td>順序讀取</td><td>~7,000 MB/s（單盤）</td></tr>
+            <tr><td>順序寫入</td><td>~5,000 MB/s（單盤）</td></tr>
+            <tr><td>隨機 IOPS</td><td>~1,000K 讀 / ~200K 寫</td></tr>
+            <tr><td>RAID 級別</td><td class="hl">RAID 5（冗餘+性能平衡）</td></tr>
+            <tr><td>容量</td><td>依配置（取決於盤數）</td></tr>
+            <tr><td>用途</td><td>活躍模型權重 · 推理數據 · 訓練數據集</td></tr>
+            <tr><td>SMART 監測</td><td>每月自動檢查健康度</td></tr>
+            <tr><td>價格</td><td class="hl">¥20,000（取中間值）</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>L3 · 冷存儲 + 離線備份</h4><span class="bdg bdg-b">HDD</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>冷存儲</td><td>企業級 HDD 10TB（希捷 Exos）</td></tr>
+            <tr><td>接口</td><td>SATA III · 7200 RPM</td></tr>
+            <tr><td>用途</td><td>數據集存檔 · 歷史模型備份</td></tr>
+            <tr><td>價格</td><td class="hl">¥1,000</td></tr>
+            <tr><td colspan="2" style="padding-top:.8rem;border-top:1px solid var(--brd)"></td></tr>
+            <tr><td>離線備份</td><td>USB 外置盒 + HDD 4TB</td></tr>
+            <tr><td>用途</td><td>定期冷備份 · 物理隔離</td></tr>
+            <tr><td>價格</td><td class="hl">¥500</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Power & Cooling -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">⚡</span>電力 · 散熱 · UPS</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>UPS · APC SMT2200</h4><span class="bdg bdg-r">基礎設施</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>型號</td><td>APC Smart-UPS SMT2200</td></tr>
+            <tr><td>額定容量</td><td class="hl">2,200VA / 1,920W</td></tr>
+            <tr><td>輸入</td><td>220V / 10A</td></tr>
+            <tr><td>輸出</td><td>220V 純正弦波</td></tr>
+            <tr><td>備用時間（滿載）</td><td>~8 分鐘（1,200W 負載）</td></tr>
+            <tr><td>備用時間（輕載）</td><td>~20 分鐘（600W 負載）</td></tr>
+            <tr><td>通信接口</td><td>USB + 串口 · 支持 Linux 自動關機</td></tr>
+            <tr><td>電池型號</td><td>APC RBC55</td></tr>
+            <tr><td>電池壽命</td><td>3-5 年</td></tr>
+            <tr><td>更換成本</td><td>¥600-900（第三方）/ ¥1,200-1,500（原裝）</td></tr>
+            <tr><td>共享設備</td><td>主伺服器 + Docker 集群（總負載 ~1,250W）</td></tr>
+            <tr><td>價格</td><td class="hl">¥4,000</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>服務器電源</h4><span class="bdg bdg-y">鉑金</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>額定功率</td><td>1,600W</td></tr>
+            <tr><td>效率認證</td><td>80Plus 鉑金（≥92%）</td></tr>
+            <tr><td>12V 輸出</td><td>單路 12V · >1,500W</td></tr>
+            <tr><td>接口</td><td>24pin ATX + 2×8pin EPS + 6× PCIe 8pin</td></tr>
+            <tr><td>保護</td><td>OVP / OCP / SCP / OTP</td></tr>
+            <tr><td>功耗預算</td><td>CPU 310W + GPU 600W + 其他 ~150W = ~1,060W</td></tr>
+            <tr><td>餘量</td><td class="hl">540W 餘量（51%）· 足夠充裕</td></tr>
+            <tr><td>價格</td><td class="hl">¥1,164</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>散熱方案</h4><span class="bdg bdg-r">水冷 ×2</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>CPU 水冷</td><td>利民 W360 × 2</td></tr>
+            <tr><td>冷排規格</td><td>360mm（3×120mm 風扇位）</td></tr>
+            <tr><td>水泵壽命</td><td>~50,000 小時（~5.7 年）</td></tr>
+            <tr><td>硅脂</td><td>Thermal Grizzly Kryonaut 5.5g</td></tr>
+            <tr><td>硅脂效果</td><td>比原裝低 3-5°C</td></tr>
+            <tr><td>機箱風扇</td><td>12cm PWM × 6</td></tr>
+            <tr><td>風扇功能</td><td class="hl">A40 被動散熱的核心依賴</td></tr>
+            <tr><td>防塵濾網</td><td>磁吸式定制 · 進風口安裝</td></tr>
+            <tr><td>水冷價格</td><td class="hl">¥2,180</td></tr>
+            <tr><td>風扇價格</td><td class="hl">¥360</td></tr>
+            <tr><td>硅脂價格</td><td class="hl">¥150</td></tr>
+            <tr><td>防塵價格</td><td class="hl">¥80</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Network -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">⬡</span>網絡 · 遠程管理</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>10GbE 網卡</h4><span class="bdg bdg-b">Intel X540</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>型號</td><td>Intel X540-T2</td></tr>
+            <tr><td>端口</td><td>2× 10GbE RJ45</td></tr>
+            <tr><td>接口</td><td>PCIe 2.1 x8</td></tr>
+            <tr><td>協議</td><td>10GBASE-T · 向下兼容 1G/100M</td></tr>
+            <tr><td>線纜</td><td>Cat6a（10GbE 需要 Cat6a 以上）</td></tr>
+            <tr><td>用途</td><td>模型文件高速傳輸 · NAS 數據同步</td></tr>
+            <tr><td>實際帶寬</td><td>~9.5 Gbps（實測）</td></tr>
+            <tr><td>傳輸 100GB</td><td>~85 秒（vs 千兆 ~15 分鐘）</td></tr>
+            <tr><td>價格</td><td class="hl">¥400</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>IPMI/BMC 遠程管理</h4><span class="bdg bdg-g">內建</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>芯片</td><td>AST2500 BMC</td></tr>
+            <tr><td>遠程開關機</td><td>✅ 支持</td></tr>
+            <tr><td>虛擬 KVM</td><td>✅ 遠程查看屏幕</td></tr>
+            <tr><td>虛擬光驅</td><td>✅ 遠程安裝系統</td></tr>
+            <tr><td>傳感器監測</td><td>✅ 溫度/功耗/風扇轉速</td></tr>
+            <tr><td>SEL 日誌</td><td>✅ 硬件事件日誌</td></tr>
+            <tr><td>管理口</td><td>專用 RJ45 · 需獨立網線</td></tr>
+            <tr><td>額外成本</td><td class="dim">¥0（主板內建）+ ¥10（網線）</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Docker Cluster -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">▦</span>Docker 集群 · R7 5825U ×3</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>零刻 SER5 MAX · 節點</h4><span class="bdg bdg-g">×3</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>CPU</td><td>AMD R7 5825U（Zen 3）</td></tr>
+            <tr><td>核心 / 線程</td><td class="hl">8C / 16T</td></tr>
+            <tr><td>基礎頻率</td><td>2.0 GHz</td></tr>
+            <tr><td>加速頻率</td><td>4.5 GHz</td></tr>
+            <tr><td>內存</td><td>16GB DDR4 3200MHz / 台</td></tr>
+            <tr><td>存儲</td><td>500GB M.2 NVMe / 台</td></tr>
+            <tr><td>TDP</td><td>15W</td></tr>
+            <tr><td>網口</td><td>1× 千兆 RJ45</td></tr>
+            <tr><td>WiFi</td><td>WiFi 6 + 藍牙 5.2</td></tr>
+            <tr><td>尺寸</td><td>~126×128×47mm</td></tr>
+            <tr><td>功耗（實測）</td><td>待機 ~5W · 滿載 ~35W</td></tr>
+            <tr><td>集群總功耗</td><td class="hl">待機 ~15W · 滿載 ~50W</td></tr>
+            <tr><td>單價</td><td class="hl">¥1,200</td></tr>
+            <tr><td>×3 總計</td><td class="hl">¥3,600</td></tr>
+          </table>
+        </div></div>
+      </div>
+
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>K3s 服務棧</h4><span class="bdg bdg-b">容器化</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>編排</td><td>K3s（輕量 Kubernetes）</td></tr>
+            <tr><td>Node 1</td><td>Traefik + Gitea + Drone CI Runner</td></tr>
+            <tr><td>Node 2</td><td>PostgreSQL + Redis</td></tr>
+            <tr><td>Node 3</td><td>Prometheus + Grafana + Loki + MinIO</td></tr>
+            <tr><td>HA</td><td>3 節點容忍 1 節點故障</td></tr>
+            <tr><td>總內存佔用</td><td>~1.8 GB（全部服務）</td></tr>
+            <tr><td>剩餘內存</td><td class="hl">~46 GB（給自定義容器）</td></tr>
+            <tr><td>GPU 調用</td><td>通過 HTTP API 調用主伺服器</td></tr>
+            <tr><td>交換機</td><td>TP-Link TL-SG105 5口 GbE</td></tr>
+            <tr><td>交換機價格</td><td class="hl">¥80</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spare Parts -->
+  <div class="hw-section">
+    <div class="hw-section-title"><span class="icon">⊡</span>冷備件 + 工具</div>
+    <div class="hw-detail-grid">
+      <div class="hw-block open">
+        <div class="hw-block-hd" onclick="toggleBlock(this)"><h4>預防性備件</h4><span class="bdg bdg-g">庫存</span></div>
+        <div class="hw-block-body"><div class="hw-block-inner">
+          <table class="spec-tbl">
+            <tr><td>備用水冷</td><td>利民 W360 × 1 · ¥1,100</td></tr>
+            <tr><td>備用風扇</td><td>12cm PWM × 2 · ¥120</td></tr>
+            <tr><td>U.2 數據線</td><td>× 1 · ¥50</td></tr>
+            <tr><td>SATA 數據線</td><td>× 2 · ¥20</td></tr>
+            <tr><td>CR2032 電池</td><td>× 2 · ¥10</td></tr>
+            <tr><td>萬用表</td><td>基礎款 · ¥80</td></tr>
+            <tr><td>理線器/扎帶</td><td>1 批 · ¥30</td></tr>
+            <tr><td>壓縮空氣</td><td>4 罐 · ¥80</td></tr>
+            <tr><td>防靜電手套</td><td>× 1 · ¥20</td></tr>
+            <tr><td style="font-weight:700;color:var(--txt)">小計</td><td class="hl">¥1,510</td></tr>
+          </table>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grand Total -->
+  <div style="margin-top:2rem;background:var(--bg3);border:1px solid var(--brd2);border-radius:12px;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+      <thead><tr style="background:var(--bg4)"><th style="font-family:'DM Mono';font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1.2rem;border-bottom:1px solid var(--brd)">類別</th><th style="font-family:'DM Mono';font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1.2rem;border-bottom:1px solid var(--brd)">組件</th><th style="font-family:'DM Mono';font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:right;padding:.8rem 1.2rem;border-bottom:1px solid var(--brd)">金額</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">計算</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">EPYC 7K62×2 + H12DSi-N6 + 512GB DDR4</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥21,400</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">GPU</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">A40×2 + NVLink Bridge</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥22,000</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">存儲</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">SATA SSD + U.2 陣列 + HDD + USB 備份</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥21,800</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">電源</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">1600W 鉑金 + APC SMT2200 UPS</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥5,164</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">散熱</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">W360×2 + 風扇×6 + 硅脂 + 防塵</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥2,770</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">網絡</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">X540-T2 + 網線</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥470</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">機箱</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">4U 服務器機箱</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥1,000</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">集群</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">SER5 MAX×3 + 交換機 + 網線</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥3,710</td></tr>
+        <tr><td style="padding:.6rem 1.2rem;color:var(--txt);font-weight:500;border-bottom:1px solid var(--brd)">備件</td><td style="padding:.6rem 1.2rem;color:var(--txt2);border-bottom:1px solid var(--brd)">水冷+風扇+線纜+工具</td><td style="padding:.6rem 1.2rem;text-align:right;font-family:'DM Mono';color:var(--accent);border-bottom:1px solid var(--brd)">¥1,510</td></tr>
+        <tr style="background:var(--accent-g)"><td style="padding:.8rem 1.2rem;font-weight:700;color:var(--txt)" colspan="2">建設期總計</td><td style="padding:.8rem 1.2rem;text-align:right;font-family:'Syne';font-weight:700;font-size:1.1rem;color:var(--accent)">¥79,824</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════ TIMELINE ═══════ -->
+<div class="tab-content" id="t-tl">
+  <div class="sec-head"><p class="sec-num">02 — Timeline</p><h2>十年四階段路線圖</h2><p>點擊下方階段標籤查看每個時期的詳細內容。</p></div>
+  <div class="tl-track" id="tl-track">
+    <div class="tl-seg active" data-phase="0" onclick="showPhase(0)"><div class="sy">0-20月</div><div class="sn">建設期</div></div>
+    <div class="tl-seg" data-phase="1" onclick="showPhase(1)"><div class="sy">21-60月</div><div class="sn">維護期 I</div></div>
+    <div class="tl-seg" data-phase="2" onclick="showPhase(2)"><div class="sy">60-72月</div><div class="sn">★ 刷新 I</div></div>
+    <div class="tl-seg" data-phase="3" onclick="showPhase(3)"><div class="sy">73-108月</div><div class="sn">維護期 II</div></div>
+    <div class="tl-seg" data-phase="4" onclick="showPhase(4)"><div class="sy">108-120月</div><div class="sn">★ 刷新 II</div></div>
+  </div>
+  <div class="tl-detail" id="tl-panel"></div>
+</div>
+
+<!-- ═══════ FINANCIAL ═══════ -->
+<div class="tab-content" id="t-fin">
+  <div class="sec-head"><p class="sec-num">03 — Financial Model</p><h2>十年資金全景</h2></div>
+  <div class="chart-wrap" id="chart-wrap"><div class="tooltip" id="chart-tip"></div><svg viewBox="0 0 800 320" id="fund-chart"></svg></div>
+  <div class="kpi-row" style="margin-top:1.5rem">
+    <div class="kpi"><div class="kpi-val" style="font-size:1.3rem">¥360,000</div><div class="kpi-lbl">十年總存入</div></div>
+    <div class="kpi"><div class="kpi-val" style="font-size:1.3rem">≈¥42,000</div><div class="kpi-lbl">累計利息</div></div>
+    <div class="kpi"><div class="kpi-val" style="font-size:1.3rem">≈¥186,000</div><div class="kpi-lbl">累計支出</div></div>
+    <div class="kpi"><div class="kpi-val" style="font-size:1.3rem">≈¥44</div><div class="kpi-lbl">日均淨成本</div></div>
+  </div>
+  <div class="sec-head" style="margin-top:2rem"><h2>支出結構</h2></div>
+  <div class="cost-bars">
+    <div class="cost-bar-row"><span class="cost-bar-lbl">建設期硬件</span><div class="cost-bar-track"><div class="cost-bar-fill cb-a" data-w="42" style="width:0">¥79,824</div></div></div>
+    <div class="cost-bar-row"><span class="cost-bar-lbl">第一次刷新</span><div class="cost-bar-track"><div class="cost-bar-fill cb-b" data-w="27" style="width:0">¥50,000</div></div></div>
+    <div class="cost-bar-row"><span class="cost-bar-lbl">第二次刷新</span><div class="cost-bar-track"><div class="cost-bar-fill cb-c" data-w="21" style="width:0">¥40,000</div></div></div>
+    <div class="cost-bar-row"><span class="cost-bar-lbl">第一維護期</span><div class="cost-bar-track"><div class="cost-bar-fill cb-d" data-w="4" style="width:0">¥7,140</div></div></div>
+    <div class="cost-bar-row"><span class="cost-bar-lbl">第二維護期</span><div class="cost-bar-track"><div class="cost-bar-fill cb-d" data-w="5" style="width:0">¥9,400</div></div></div>
+    <div class="cost-bar-row"><span class="cost-bar-lbl">十年電費</span><div class="cost-bar-track"><div class="cost-bar-fill cb-d" data-w="13" style="width:0">¥24,900</div></div></div>
+  </div>
+  <div class="sec-head" style="margin-top:2rem"><h2>支出明細</h2></div>
+  <div class="tbl-wrap" style="overflow-x:auto;border:1px solid var(--brd);border-radius:12px;background:var(--bg2);margin:1rem 0">
+    <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+      <thead><tr style="background:var(--bg3)"><th style="font-family:'DM Mono';font-weight:500;font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1rem;border-bottom:1px solid var(--brd)">項目</th><th style="font-family:'DM Mono';font-weight:500;font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1rem;border-bottom:1px solid var(--brd)">時間</th><th style="font-family:'DM Mono';font-weight:500;font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1rem;border-bottom:1px solid var(--brd)">金額</th><th style="font-family:'DM Mono';font-weight:500;font-size:.63rem;letter-spacing:.1em;text-transform:uppercase;color:var(--txt3);text-align:left;padding:.8rem 1rem;border-bottom:1px solid var(--brd)">說明</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">建設期硬件</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 0-20 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥79,824</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">主伺服器 + Docker 集群</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">水冷 + UPS 電池測試</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 36 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥1,900</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">強制預防性更換</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">風扇更換</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 40 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥240</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">A40 散熱依賴機箱風扇</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">電源 + UPS 電池</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 48 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥2,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">預防性更換</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">SSD 評估/更換</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 56 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥3,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">按需更換</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:700">★ 第一次平台刷新</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 60-72 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent);font-size:1rem">¥50,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">主板+CPU+內存+GPU+集群</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">第二代水冷</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 84 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥1,500</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">新平台規格</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">第二代電源 + UPS</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 96 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥2,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">預防性更換</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">第二代 SSD/GPU</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 102 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">¥5,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">按需更換</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:700">★ 第二次平台刷新</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">第 108-120 月</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent);font-size:1rem">¥40,000</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">主板+CPU+內存+GPU</td></tr>
+        <tr><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt);font-weight:500">十年電費</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">全程</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);font-family:'DM Mono';color:var(--accent)">≈¥24,900</td><td style="padding:.7rem 1rem;border-bottom:1px solid var(--brd);color:var(--txt2)">主伺服器 ~500W + 集群 ~35W</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════ RISK ═══════ -->
+<div class="tab-content" id="t-risk">
+  <div class="sec-head"><p class="sec-num">04 — Risk Matrix</p><h2>風險矩陣</h2><p>橫軸為發生概率，縱軸為影響程度。點擊查看緩解措施。</p></div>
+  <div class="risk-grid">
+    <div class="rh"></div><div class="rh">極低</div><div class="rh">低</div><div class="rh">中等</div><div class="rh">高</div><div class="rh">極高</div>
+    <div class="rl">影響 · 極高</div><div class="risk-cell r2"></div><div class="risk-cell r3"></div><div class="risk-cell r4 has-risk" data-label="水冷泄漏"><span class="risk-dot hi"></span></div><div class="risk-cell r5 has-risk" data-label="DDR4 萎縮"><span class="risk-dot hi"></span></div><div class="risk-cell r5"></div>
+    <div class="rl">影響 · 高</div><div class="risk-cell r1"></div><div class="risk-cell r2"></div><div class="risk-cell r3 has-risk" data-label="A40 GPU 老化"><span class="risk-dot md"></span></div><div class="risk-cell r4 has-risk" data-label="GPU 市場波動"><span class="risk-dot md"></span></div><div class="risk-cell r5"></div>
+    <div class="rl">影響 · 中</div><div class="risk-cell r1"></div><div class="risk-cell r2"></div><div class="risk-cell r3 has-risk" data-label="電源老化"><span class="risk-dot md"></span></div><div class="risk-cell r3 has-risk" data-label="U.2 SSD 退化"><span class="risk-dot md"></span></div><div class="risk-cell r4"></div>
+    <div class="rl">影響 · 低</div><div class="risk-cell r1 has-risk" data-label="集群節點故障"><span class="risk-dot lo"></span></div><div class="risk-cell r1 has-risk" data-label="UPS 電池衰退"><span class="risk-dot lo"></span></div><div class="risk-cell r2"></div><div class="risk-cell r2"></div><div class="risk-cell r3"></div>
+  </div>
+  <div class="sec-head" style="margin-top:2rem"><h2>風險詳情</h2><p>點擊展開。</p></div>
+  <div class="risk-list">
+    <div class="risk-item" onclick="toggleRisk(this)"><div class="ri-hd"><span class="ri-title">水冷泄漏</span><span class="bdg bdg-r">高危</span></div><div class="ri-body"><div class="ri-inner">泄漏可波及主板、CPU、下方 A40。緩慢滲漏只損主板，快速噴射可能全毀。<div class="ri-action">→ 第 36 月強制更換 · A40 安裝在水冷排上方 · 每季度目視檢查</div></div></div></div>
+    <div class="risk-item" onclick="toggleRisk(this)"><div class="ri-hd"><span class="ri-title">DDR4 生態萎縮</span><span class="bdg bdg-r">高危</span></div><div class="ri-body"><div class="ri-inner">美光已停產 DDR4，2026 年價格持續上漲。(citation:6)(citation:7) 第 5 年切換 DDR5 時價格仍可能高企。(citation:5)<div class="ri-action">→ 建設期已購齊 16 條 · 考慮冷備 2 條 · 第 5 年切 DDR5</div></div></div></div>
+    <div class="risk-item" onclick="toggleRisk(this)"><div class="ri-hd"><span class="ri-title">A40 GPU 老化</span><span class="bdg bdg-y">中危</span></div><div class="ri-body"><div class="ri-inner">顯存 ECC 錯誤累積、核心老化。被動散熱完全依賴機箱風扇。(citation:9)<div class="ri-action">→ 每月 nvidia-smi ECC 監測 · 風扇按時更換 · 備有故障基金</div></div></div></div>
+    <div class="risk-item" onclick="toggleRisk(this)"><div class="ri-hd"><span class="ri-title">電源 + SSD + 集群</span><span class="bdg bdg-g">低危</span></div><div class="ri-body"><div class="ri-inner">電源第 48 月預防性更換。SSD 每月 SMART 監測。K3s 集群自動容錯。<div class="ri-action">→ IPMI 監測電壓 · smartctl 健康度 · K3s HA</div></div></div></div>
+  </div>
+</div>
+
+<!-- ═══════ MAINTENANCE ═══════ -->
+<div class="tab-content" id="t-maint">
+  <div class="sec-head"><p class="sec-num">05 — Maintenance</p><h2>運維體系</h2><p>自動化監測 + 定期巡檢 + 計劃性更換。點擊勾選已完成項目。</p></div>
+  <div class="next-action">
+    <div class="na-icon">🔧</div>
+    <div class="na-text"><div class="na-label">最近維護動作</div><div class="na-title">第 36 個月：更換水冷 + UPS 電池測試</div><div class="na-sub">強制預防性更換，不等它壞。</div></div>
+    <div class="na-cost">¥1,900</div>
+  </div>
+  <div class="maint-grid">
+    <div class="maint-card">
+      <h4>每月自動檢查</h4>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>U.2 SSD 健康度<span class="ck-freq">smartctl</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>系統盤 SMART<span class="ck-freq">smartctl</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>GPU ECC 錯誤計數<span class="ck-freq">nvidia-smi</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>GPU 溫度/功耗<span class="ck-freq">nvidia-smi</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>內存 ECC 錯誤<span class="ck-freq">edac-util</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>NVLink 狀態<span class="ck-freq">nvlink -s</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>UPS 電池<span class="ck-freq">apcaccess</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>Docker 鏡像清理<span class="ck-freq">prune</span></div>
+    </div>
+    <div class="maint-card">
+      <h4>季度物理巡檢</h4>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>水冷管路目視（水漬/滲漏）</div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>NVLink 金手指清潔</div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>防塵濾網拆下水洗</div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>A40 散熱片清灰</div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>UPS 電池自檢</div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>iperf3 網絡測試</div>
+    </div>
+    <div class="maint-card">
+      <h4>計劃性更換日曆</h4>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 36 月：水冷 + UPS 測試<span class="ck-freq">¥1,900</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 40 月：風扇全換<span class="ck-freq">¥240</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 48 月：電源 + UPS 電池<span class="ck-freq">¥2,000</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 56 月：SSD 評估<span class="ck-freq">¥3,000</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 84 月：二代水冷<span class="ck-freq">¥1,500</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 96 月：二代電源+UPS<span class="ck-freq">¥2,000</span></div>
+      <div class="ck-item" onclick="toggleCk(this)"><div class="ck-box"></div>第 102 月：二代 SSD/GPU<span class="ck-freq">¥5,000</span></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer><p>Hardware Full-Lifecycle Plan · 10-Year Edition · v2 · 2026 · All figures in CNY</p></footer>
+
+<script>
+/* ─── Tab Switching ─── */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const id=btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    btn.classList.add('active');
+    const el=document.getElementById(id);
+    el.classList.add('active');
+    if(id==='t-overview')animateCounters();
+    if(id==='t-tl')showPhase(0);
+    if(id==='t-fin'){animateChart();animateCostBars();}
+  });
+});
+
+/* ─── Counter Animation ─── */
+function animateCounters(){
+  document.querySelectorAll('.kpi-val[data-count]').forEach(el=>{
+    const target=parseInt(el.dataset.count);
+    const prefix=el.dataset.prefix||'';
+    const suffix=el.dataset.suffix||'';
+    const start=performance.now();
+    const dur=1200;
+    function tick(now){
+      const p=Math.min((now-start)/dur,1);
+      const ease=1-Math.pow(1-p,3);
+      el.textContent=prefix+Math.round(target*ease).toLocaleString()+suffix;
+      if(p<1)requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+
+/* ─── Hardware Block Toggle ─── */
+function toggleBlock(hd){
+  hd.closest('.hw-block').classList.toggle('open');
+}
+
+/* ─── Risk Toggle ─── */
+function toggleRisk(el){el.classList.toggle('open');}
+
+/* ─── Checklist ─── */
+function toggleCk(el){el.classList.toggle('done');}
+
+/* ─── Timeline ─── */
+const phases=[
+  {title:'建設期',sub:'第 0–20 個月',desc:'採購並部署全部硬件。主伺服器：EPYC 7K62×2 + A40×2 + NVLink Bridge (112.5 GB/s) + 512GB DDR4 ECC (16ch) + U.2 NVMe RAID 5 + UPS SMT2200 + 10GbE X540-T2。Docker 集群：R7 5825U×3 + K3s，部署 Gitea、Drone CI、Prometheus、Grafana、Loki、MinIO。',costs:[{t:'硬件採購',v:'¥79,824',c:'out'}]},
+  {title:'第一維護期',sub:'第 21–60 個月 · 月存 ¥3,000',desc:'預防性更換：第 36 月強制換水冷（水泵壽命 ~50,000h），第 40 月換風扇（A40 被動散熱依賴），第 48 月換電源和 UPS 電池。每月運行自動監測腳本（GPU ECC / SSD SMART / NVLink / 內存 ECC）。',costs:[{t:'水冷+UPS',v:'¥1,900',c:'out'},{t:'風扇',v:'¥240',c:'out'},{t:'電源+UPS',v:'¥2,000',c:'out'},{t:'SSD',v:'¥3,000',c:'out'},{t:'基金餘額',v:'≈¥121,000',c:'in'}]},
+  {title:'★ 第一次平台刷新',sub:'第 60–72 個月',desc:'EPYC 7K62 已服役 5 年（架構 ~12 年），DDR4 因原廠停產進入稀缺期。(citation:6) DDR5 RDIMM 價格預計 2027-2028 才回落。(citation:5)(citation:7) 更換主板+CPU+內存+GPU。集群整批換新。保留存儲、電源、UPS、網絡。',costs:[{t:'刷新預算',v:'¥50,000',c:'out'},{t:'舊件回收',v:'≈¥12,000',c:'in'},{t:'刷新後餘額',v:'≈¥85,000',c:'in'}]},
+  {title:'第二維護期',sub:'第 73–108 個月 · 月存 ¥3,000',desc:'第二代平台穩定運行。第 84 月換水冷，第 96 月換電源和 UPS 電池。持續監測。',costs:[{t:'水冷',v:'¥1,500',c:'out'},{t:'電源+UPS',v:'¥2,000',c:'out'},{t:'SSD/GPU',v:'¥5,000',c:'out'},{t:'基金餘額',v:'≈¥230,000',c:'in'}]},
+  {title:'★ 第二次平台刷新',sub:'第 108–120 個月',desc:'第二代平台服役 ~5 年。執行第二次刷新。基金結餘充足。出售第二代舊硬件。',costs:[{t:'刷新預算',v:'¥40,000',c:'out'},{t:'舊件回收',v:'≈¥12,000',c:'in'},{t:'結束餘額',v:'≈¥235,000',c:'in'}]}
+];
+function showPhase(idx){
+  document.querySelectorAll('.tl-seg').forEach((s,i)=>{s.classList.toggle('active',i===idx);});
+  const p=phases[idx];
+  const costsHtml=p.costs.map(c=>`<span class="tl-chip ${c.c}">${c.t} ${c.v}</span>`).join('');
+  document.getElementById('tl-panel').innerHTML=`<h3>${p.title}</h3><div class="sub">${p.sub}</div><div class="desc">${p.desc}</div><div class="tl-costs">${costsHtml}</div>`;
+}
+
+/* ─── SVG Fund Chart ─── */
+function animateChart(){
+  const svg=document.getElementById('fund-chart');
+  if(svg.dataset.done)return;
+  svg.dataset.done='1';
+  const data=[{y:0,v:0},{y:1,v:0},{y:2,v:12088},{y:3,v:48688},{y:4,v:86448},{y:5,v:125248},{y:6,v:114448},{y:7,v:153448},{y:8,v:193648},{y:9,v:232448},{y:10,v:235000}];
+  const maxV=250000,L=60,R=760,T=35,B=275,W=R-L,H=B-T;
+  function x(i){return L+(i/10)*W}function y(v){return B-(v/maxV)*H}
+  let html='';
+  for(let i=0;i<=5;i++){const yy=B-(i/5)*H;html+=`<line x1="${L}" y1="${yy}" x2="${R}" y2="${yy}" class="chart-grid"/><text x="${L-8}" y="${yy+4}" class="chart-label" text-anchor="end">${Math.round(maxV*i/5/1000)}k</text>`;}
+  for(let i=0;i<=10;i++){html+=`<text x="${x(i)}" y="${B+18}" class="chart-label" text-anchor="middle">Y${i}</text>`;}
+  html+=`<line x1="${x(5)}" y1="${T}" x2="${x(5)}" y2="${B}" class="chart-event"/><text x="${x(5)+5}" y="${T+12}" class="chart-event-label">刷新 I</text>`;
+  html+=`<line x1="${x(10)}" y1="${T}" x2="${x(10)}" y2="${B}" class="chart-event"/><text x="${x(10)-5}" y="${T+12}" class="chart-event-label" text-anchor="end">刷新 II</text>`;
+  let areaPath=`M ${x(0)},${y(data[0].v)}`;data.forEach(d=>{areaPath+=` L ${x(d.y)},${y(d.v)}`});areaPath+=` L ${x(10)},${B} L ${x(0)},${B} Z`;
+  html+=`<defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e8a830" stop-opacity=".3"/><stop offset="100%" stop-color="#e8a830" stop-opacity="0"/></linearGradient></defs>`;
+  html+=`<path d="${areaPath}" fill="url(#grad)" class="chart-area"/>`;
+  let linePath=`M ${x(0)},${y(data[0].v)}`;data.forEach(d=>{linePath+=` L ${x(d.y)},${y(d.v)}`});
+  html+=`<path d="${linePath}" class="chart-line" stroke-dasharray="900" stroke-dashoffset="900" style="transition:stroke-dashoffset 2s ease"/>`;
+  data.forEach(d=>{html+=`<circle cx="${x(d.y)}" cy="${y(d.v)}" r="5" class="chart-dot" data-v="${d.v}" data-y="${d.y}"/><text x="${x(d.y)}" y="${y(d.v)-12}" class="chart-val" text-anchor="middle" data-for="${d.y}">¥${d.v.toLocaleString()}</text>`;});
+  svg.innerHTML=html;
+  requestAnimationFrame(()=>{svg.querySelector('.chart-line').style.strokeDashoffset='0';});
+  setTimeout(()=>{svg.querySelectorAll('.chart-val').forEach(t=>t.style.opacity='1');},2200);
+  const tip=document.getElementById('chart-tip');
+  svg.querySelectorAll('.chart-dot').forEach(dot=>{
+    dot.addEventListener('mouseenter',()=>{tip.textContent=`第 ${dot.dataset.y} 年: ¥${parseInt(dot.dataset.v).toLocaleString()}`;tip.style.opacity='1';const rect=document.getElementById('chart-wrap').getBoundingClientRect(),dr=dot.getBoundingClientRect();tip.style.left=(dr.left-rect.left+dr.width/2-tip.offsetWidth/2)+'px';tip.style.top=(dr.top-rect.top-36)+'px';});
+    dot.addEventListener('mouseleave',()=>{tip.style.opacity='0';});
+  });
+}
+function animateCostBars(){document.querySelectorAll('.cost-bar-fill').forEach((bar,i)=>{setTimeout(()=>{bar.style.width=bar.dataset.w+'%';},i*100);});}
+
+/* ─── Init ─── */
+document.addEventListener('DOMContentLoaded',()=>{animateCounters();showPhase(0);});
+</script>
+</body>
+</html>
