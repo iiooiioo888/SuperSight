@@ -137,7 +137,8 @@ class TestEmotionRecognition:
         import cv2
         img = cv2.imread(str(test_image_jpg))
         
-        with patch('agents.face_agent.DeepFace', side_effect=ImportError("No module")):
+        # 模擬 DeepFace 不可用
+        with patch('agents.face_agent._DEEPFACE_AVAILABLE', False):
             result = agent._recognize_emotion(img)
             assert result["dominant"] == "Unknown"
             assert result["scores"] == {}

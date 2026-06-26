@@ -102,22 +102,40 @@ class MetaDataAgent:
     
     @staticmethod
     def _parse_gps(gps_info: dict) -> Optional[Dict[str, Any]]:
-        """解析 GPS 信息"""
+        """解析 GPS 信息（PIL EXIF GPS IFD 格式）"""
         try:
+            def _rational_to_float(r):
+                if isinstance(r, tuple) and len(r) == 2:
+                    return float(r[0]) / float(r[1]) if r[1] != 0 else 0.0
+                return float(r)
+            
             def _to_decimal(values, ref):
-                d, m, s = values
-                decimal = d + m / 60.0 + s / 3600.0
+                if isinstance(values, (list, tuple)) and len(values) >= 3:
+                    d = _rational_to_float(values[0])
+                    m = _rational_to_float(values[1])
+                    s = _rational_to_float(values[2])
+                    decimal = d + m / 60.0 + s / 3600.0
+                else:
+                    decimal = float(values)
+                
+                if isinstance(ref, bytes):
+                    ref = ref.decode()
                 if ref in ('S', 'W'):
                     decimal = -decimal
                 return round(decimal, 6)
             
             gps = {}
-            if 2 in gps_info and 1 in gps_info:
-                gps["latitude"] = _to_decimal(gps_info[2], gps_info.get(1, 'N'))
-            if 4 in gps_info and 3 in gps_info:
-                gps["longitude"] = _to_decimal(gps_info[4], gps_info.get(3, 'E'))
+            # PIL GPS IFD: 0=LatRef, 1=Lat, 2=LonRef, 3=Lon, 5=Alt
+            if 0 in gps_info and 1 in gps_info:
+                gps["latitude"] = _to_decimal(gps_info[1], gps_info[0])
+            if 2 in gps_info and 3 in gps_info:
+                gps["longitude"] = _to_decimal(gps_info[3], gps_info[2])
             if 5 in gps_info:
-                gps["altitude"] = float(gps_info[5])
+                alt = gps_info[5]
+                if isinstance(alt, tuple) and len(alt) == 2:
+                    gps["altitude"] = float(alt[0]) / float(alt[1]) if alt[1] != 0 else 0.0
+                else:
+                    gps["altitude"] = float(alt)
             return gps if gps else None
         except Exception:
             return None

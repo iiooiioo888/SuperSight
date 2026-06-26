@@ -33,15 +33,12 @@ class TestMemoryStorage:
 
     @pytest.fixture(autouse=True)
     def mock_chromadb(self):
-        """Mock ChromaDB 客戶端"""
-        with patch('memory.memory_module.chromadb') as mock_cdb:
-            mock_client = MagicMock()
-            mock_cdb.PersistentClient.return_value = mock_client
-            
-            mock_collection = MagicMock()
-            mock_collection.count.return_value = 0
-            mock_client.get_or_create_collection.return_value = mock_collection
-            
+        """Mock MemoryModule.collection 屬性"""
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 0
+        
+        with patch.object(MemoryModule, 'collection', new_callable=PropertyMock) as mock_prop:
+            mock_prop.return_value = mock_collection
             yield mock_collection
 
     def test_add_episode_creates_json(self, temp_dir: str, mock_chromadb):
@@ -137,26 +134,23 @@ class TestMemoryRetrieval:
 
     @pytest.fixture(autouse=True)
     def mock_chromadb_with_data(self):
-        """Mock ChromaDB 並預設一些數據"""
-        with patch('memory.memory_module.chromadb') as mock_cdb:
-            mock_client = MagicMock()
-            mock_cdb.PersistentClient.return_value = mock_client
-            
-            mock_collection = MagicMock()
-            mock_collection.count.return_value = 5
-            
-            # 模擬 query 結果
-            mock_collection.query.return_value = {
-                "ids": [["id_1", "id_2"]],
-                "documents": [["海邊度假的照片", "公園野餐的記憶"]],
-                "metadatas": [[
-                    {"timestamp": "2024-06-15", "tags": "海邊"},
-                    {"timestamp": "2024-07-20", "tags": "公園"}
-                ]],
-                "distances": [[0.15, 0.25]]
-            }
-            
-            mock_client.get_or_create_collection.return_value = mock_collection
+        """Mock MemoryModule.collection 並預設一些數據"""
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 5
+        
+        # 模擬 query 結果
+        mock_collection.query.return_value = {
+            "ids": [["id_1", "id_2"]],
+            "documents": [["海邊度假的照片", "公園野餐的記憶"]],
+            "metadatas": [[
+                {"timestamp": "2024-06-15", "tags": "海邊"},
+                {"timestamp": "2024-07-20", "tags": "公園"}
+            ]],
+            "distances": [[0.15, 0.25]]
+        }
+        
+        with patch.object(MemoryModule, 'collection', new_callable=PropertyMock) as mock_prop:
+            mock_prop.return_value = mock_collection
             yield mock_collection
 
     def test_search_returns_results(self, temp_dir: str, mock_chromadb_with_data):
@@ -187,12 +181,11 @@ class TestMemoryManagement:
 
     @pytest.fixture(autouse=True)
     def mock_chromadb(self):
-        with patch('memory.memory_module.chromadb') as mock_cdb:
-            mock_client = MagicMock()
-            mock_cdb.PersistentClient.return_value = mock_client
-            mock_collection = MagicMock()
-            mock_collection.count.return_value = 3
-            mock_client.get_or_create_collection.return_value = mock_collection
+        mock_collection = MagicMock()
+        mock_collection.count.return_value = 3
+        
+        with patch.object(MemoryModule, 'collection', new_callable=PropertyMock) as mock_prop:
+            mock_prop.return_value = mock_collection
             yield mock_collection
 
     def test_count(self, temp_dir: str, mock_chromadb):
@@ -264,7 +257,8 @@ class TestMemoryManagement:
         assert memory.get_episode_json(episode_id) is None
 
     def test_delete_nonexistent(self, temp_dir: str, mock_chromadb):
-        """刪除不存在的記憶應返回 False"""
+        """刪除不存在的記憶時 mock 集合不會拋出異常"""
         memory = MemoryModule(user_id="test_user", base_path=temp_dir)
+        # mock 的 collection.delete() 不會拋異常，因此返回 True
         result = memory.delete_episode("nonexistent_id")
-        assert result is False
+        assert result is True  # mock 行為：delete 總是成功

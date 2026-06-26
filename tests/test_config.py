@@ -18,7 +18,7 @@ class TestSettings:
         """測試默認配置值"""
         settings = Settings()
         assert settings.PROJECT_NAME == "SuperSight"
-        assert settings.VERSION == "V2.1"
+        assert settings.VERSION == "V3.0"
         assert settings.SERVER_HOST == "127.0.0.1"
         assert settings.SERVER_PORT == 7860
         assert settings.SHARE_MODE is False
@@ -79,24 +79,24 @@ class TestSettings:
     def test_max_file_size(self):
         """測試文件大小限制"""
         settings = Settings()
-        assert settings.MAX_FILE_SIZE_MB == 10
+        assert settings.MAX_FILE_SIZE_MB == 20
 
     def test_vram_thresholds(self):
         """測試顯存閾值配置"""
         settings = Settings()
-        assert settings.VRAM_WARNING_THRESHOLD_GB == 2.0
-        assert settings.VRAM_CRITICAL_THRESHOLD_GB == 1.0
-        assert settings.VLM_VRAM_ESTIMATE_GB == 6.0
-        assert settings.FACE_VRAM_ESTIMATE_GB == 1.5
+        assert settings.VRAM_WARNING_THRESHOLD_GB == 1.0
+        assert settings.VRAM_CRITICAL_THRESHOLD_GB == 0.5
+        assert settings.VLM_VRAM_ESTIMATE_GB == 4.5
+        assert settings.FACE_VRAM_ESTIMATE_GB == 1.2
 
     def test_model_config(self):
         """測試模型配置默認值"""
         settings = Settings()
-        assert settings.VLM_MODEL_NAME == "qwen2.5-vl:7b-instruct-q4_k_m"
-        assert settings.VLM_MAX_TOKENS == 512
+        assert settings.VLM_MODEL_NAME == "qwen3-vl:8b-fp4"
+        assert settings.VLM_MAX_TOKENS == 1024
         assert settings.VLM_TEMPERATURE == 0.1
-        assert settings.INSIGHTFACE_MODEL == "buffalo_l"
-        assert settings.EMBEDDING_MODEL == "BAAI/bge-m3"
+        assert settings.INSIGHTFACE_MODEL == "buffalo_m"
+        assert settings.EMBEDDING_MODEL == "BAAI/bge-m4"
 
     def test_directory_paths(self):
         """測試目錄路徑配置"""

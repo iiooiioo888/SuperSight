@@ -14,6 +14,14 @@ from typing import List, Dict, Optional, Any
 import cv2
 import numpy as np
 
+# DeepFace 嘗試導入（可能不可用）
+try:
+    from deepface import DeepFace
+    _DEEPFACE_AVAILABLE = True
+except ImportError:
+    DeepFace = None  # type: ignore
+    _DEEPFACE_AVAILABLE = False
+
 
 class FaceAnalysisAgent:
     """
@@ -116,9 +124,11 @@ class FaceAnalysisAgent:
         
         landmarks = None
         if hasattr(face, 'landmark_2d_106') and face.landmark_2d_106 is not None:
-            landmarks = face.landmark_2d_106.tolist()
+            lm = face.landmark_2d_106
+            landmarks = lm.tolist() if hasattr(lm, 'tolist') else lm
         elif hasattr(face, 'landmark_3d_68') and face.landmark_3d_68 is not None:
-            landmarks = face.landmark_3d_68.tolist()
+            lm = face.landmark_3d_68
+            landmarks = lm.tolist() if hasattr(lm, 'tolist') else lm
         
         result = {
             "age": int(face.age) if hasattr(face, 'age') else 0,
@@ -141,9 +151,16 @@ class FaceAnalysisAgent:
         if face_img.size == 0:
             return default_result
         
+        if not _DEEPFACE_AVAILABLE:
+            if self._deepface_available:
+                self.logger.warning("DeepFace 未安裝，情緒識別不可用。")
+                self._deepface_available = False
+            return default_result
+        
+        if DeepFace is None:
+            return default_result
+        
         try:
-            from deepface import DeepFace
-            
             face_rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
             
             emotion_obj = DeepFace.analyze(
@@ -165,10 +182,6 @@ class FaceAnalysisAgent:
                 
                 return {"dominant": dominant, "scores": normalized_scores}
                 
-        except ImportError:
-            if self._deepface_available:
-                self.logger.warning("DeepFace 未安裝，情緒識別不可用。")
-                self._deepface_available = False
         except Exception as e:
             self.logger.debug(f"情緒識別失敗（非致命）: {e}")
         

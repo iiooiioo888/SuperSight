@@ -79,9 +79,9 @@ class TestValidateFileEdgeCases:
         """超過大小限制的文件應被拒絕"""
         from tests.conftest import create_test_image_file
         file_path = create_test_image_file(temp_dir, "big.jpg", width=5000, height=5000)
-        # 修改 size 回傳值來模擬超大文件
+        # 修改 size 回傳值來模擬超大文件（MAX_FILE_SIZE_MB = 20）
         with patch.object(Path, "stat") as mock_stat:
-            mock_stat.return_value.st_size = 20 * 1024 * 1024  # 20MB
+            mock_stat.return_value.st_size = 30 * 1024 * 1024  # 30MB > 20MB
             is_valid, msg = validate_file(str(file_path))
             assert is_valid is False
             assert "超過" in msg or "exceeds" in msg.lower()
@@ -117,8 +117,28 @@ class TestLogging:
         """log_access 應寫入日誌"""
         with patch("utils.security.settings") as mock_settings:
             mock_settings.LOGS_DIR = Path(temp_dir)
-            logger = setup_logging()
-            log_access(logger, "test_action", "test detail", user="tester")
+            # 重置 logger handlers 以便為測試創建新日誌文件
+            test_logger = logging.getLogger("SuperSight.Test")
+            test_logger.handlers.clear()
+            test_logger.setLevel(logging.INFO)
+            
+            from logging.handlers import TimedRotatingFileHandler
+            file_handler = TimedRotatingFileHandler(
+                filename=str(Path(temp_dir) / "access.log"),
+                when="midnight",
+                interval=1,
+                backupCount=30,
+                encoding="utf-8"
+            )
+            file_handler.setLevel(logging.INFO)
+            file_fmt = logging.Formatter(
+                "%(asctime)s | %(levelname)-8s | %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"
+            )
+            file_handler.setFormatter(file_fmt)
+            test_logger.addHandler(file_handler)
+            
+            log_access(test_logger, "test_action", "test detail", user="tester")
             
             # 檢查日誌文件已創建
             log_file = Path(temp_dir) / "access.log"

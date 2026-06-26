@@ -58,20 +58,24 @@ class TestResourceMonitorGPU:
     def test_warning_status(self):
         """顯存緊張應回傳 WARNING"""
         with patch("torch.cuda.get_device_properties") as mock_props:
-            mock_props.return_value.total_memory = 16 * 1024**3  # 16GB cards
-            with patch("torch.cuda.memory_allocated", return_value=9 * 1024**3):  # 9GB used
+            mock_props.return_value.total_memory = 16 * 1024**3  # 16GB card
+            # VLM=4.5GB + Face=1.2GB = 5.7GB, VRAM_WARNING=1.0GB
+            # Need: free - need < 1.0 → free < 6.7GB → used > 9.3GB
+            with patch("torch.cuda.memory_allocated", return_value=11 * 1024**3):  # 11GB used
                 monitor = ResourceMonitor()
                 status = monitor.check_resource_status(need_vlm=True, need_face=True)
-                # free = 7GB, need = 7.5GB, remaining = -0.5GB → CRITICAL or WARNING
+                # free = 5GB, need = 5.7GB, remaining = -0.7GB → CRITICAL
                 assert status.level in (ResourceLevel.WARNING, ResourceLevel.CRITICAL)
 
     def test_critical_status_disables_face(self):
         """OOM 邊緣應關閉人臉分析"""
         with patch("torch.cuda.get_device_properties") as mock_props:
             mock_props.return_value.total_memory = 16 * 1024**3
-            with patch("torch.cuda.memory_allocated", return_value=10 * 1024**3):  # 10GB used
+            with patch("torch.cuda.memory_allocated", return_value=12 * 1024**3):  # 12GB used → 4GB free
                 monitor = ResourceMonitor()
                 status = monitor.check_resource_status(need_vlm=True, need_face=True)
+                # free=4GB, need=5.7GB, remaining=-1.7GB < 0.5(CRITICAL)
+                # → CRITICAL, should disable face
                 if status.level == ResourceLevel.CRITICAL:
                     assert status.can_use_vlm is True  # VLM 優先
                     assert status.can_use_face is False  # 關閉人臉

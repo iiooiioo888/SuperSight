@@ -9,16 +9,16 @@ from typing import Dict, Any
 import pytest
 
 from agents.master_agent import (
-    SuperSightMasterAgent, AgentState, MetaDataAgent
+    SuperSightMasterAgent, V3AgentState, MetaDataAgent
 )
 
 
-class TestAgentState:
+class TestV3AgentState:
     """LangGraph 狀態定義測試"""
 
     def test_state_fields(self):
-        """AgentState 應包含所有必要字段"""
-        state = AgentState(
+        """V3AgentState 應包含所有必要字段"""
+        state = V3AgentState(
             image_path="/tmp/test.jpg",
             query="測試",
             user_id="test_user",
@@ -84,12 +84,12 @@ class TestMetaDataAgent:
         assert result.get("error") is not None
 
     def test_gps_parsing(self):
-        """GPS 信息應被正確解析"""
+        """GPS 信息應被正確解析 (PIL GPS IFD: 0=LatRef, 1=Lat, 2=LonRef, 3=Lon)"""
         gps_info = {
-            0: b'N', 1: b'N', 
-            2: ((25, 1), (3, 1), (15, 1)),  # 25°3'15"N
-            3: b'E', 4: b'E',
-            5: ((121, 1), (30, 1), (0, 1))  # 121°30'0"E
+            0: b'N',
+            1: ((25, 1), (3, 1), (15, 1)),  # 25°3'15"N
+            2: b'E',
+            3: ((121, 1), (30, 1), (0, 1)),  # 121°30'0"E
         }
         result = MetaDataAgent._parse_gps(gps_info)
         assert result is not None
@@ -157,7 +157,7 @@ class TestMasterAgentResourceRouting:
     def test_full_route(self):
         """充足資源應走 full 路由"""
         agent = SuperSightMasterAgent()
-        state = AgentState(
+        state = V3AgentState(
             image_path="/tmp/test.jpg",
             query="",
             user_id="test",
@@ -175,7 +175,7 @@ class TestMasterAgentResourceRouting:
     def test_vlm_only_route(self):
         """VLM 可用但人臉不可用時走 vlm_only"""
         agent = SuperSightMasterAgent()
-        state = AgentState(
+        state = V3AgentState(
             image_path="/tmp/test.jpg",
             query="",
             user_id="test",
@@ -193,7 +193,7 @@ class TestMasterAgentResourceRouting:
     def test_face_only_route(self):
         """人臉可用但 VLM 不可用時走 face_only"""
         agent = SuperSightMasterAgent()
-        state = AgentState(
+        state = V3AgentState(
             image_path="/tmp/test.jpg",
             query="",
             user_id="test",
@@ -211,7 +211,7 @@ class TestMasterAgentResourceRouting:
     def test_minimal_route(self):
         """資源枯竭時走 minimal"""
         agent = SuperSightMasterAgent()
-        state = AgentState(
+        state = V3AgentState(
             image_path="/tmp/test.jpg",
             query="",
             user_id="test",

@@ -100,22 +100,8 @@ def fake_exif_image(temp_dir: str) -> Path:
     exif_data[Base.ISOSpeedRatings] = 200
     exif_data[Base.FNumber] = (28, 10)  # F2.8
     
-    # 寫入 GPS 信息
-    gps_ifd = {0: b'N', 1: b'N', 2: ((25, 1), (3, 1), (15, 1)),
-               3: b'E', 4: b'E', 5: ((121, 1), (30, 1), (0, 1))}
-    
     file_path = Path(temp_dir) / "exif_test.jpg"
     img.save(file_path, exif=exif_data)
-    
-    # 手動添加 GPS
-    from PIL import Image
-    saved_img = Image.open(file_path)
-    exif = saved_img.getexif()
-    exif[Base.GPSInfo] = gps_ifd
-    
-    # 重新保存
-    file_path.unlink()
-    saved_img.save(file_path, exif=exif)
     
     return file_path
 

@@ -41,7 +41,7 @@ class TestProfileInitialization:
     def test_profile_dir_creation(self, temp_dir: str):
         """初始化應創建畫像目錄"""
         with patch("memory.profile_manager.settings") as mock_settings:
-            profile_dir = Path(temp_dir) / "profiles" / "test_user"
+            profile_dir = Path(temp_dir) / "test_user"  # settings.PROFILE_DIR / user_id
             mock_settings.PROFILE_DIR = Path(temp_dir)
             
             ProfileManager(user_id="test_user")

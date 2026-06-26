@@ -17,18 +17,21 @@ class TestSceneAgentAvailability:
 
     @pytest.fixture(autouse=True)
     def mock_requests(self):
-        """Mock requests 避免實際 HTTP 調用"""
-        with patch('agents.scene_agent.requests') as mock_req:
-            yield mock_req
+        """Mock requests.get/post 避免實際 HTTP 調用"""
+        with patch('agents.scene_agent.requests.get') as mock_get:
+            with patch('agents.scene_agent.requests.post') as mock_post:
+                self._mock_get = mock_get
+                self._mock_post = mock_post
+                yield mock_get
 
     def test_check_available(self, mock_requests):
         """Ollama 服務可用時應返回 True"""
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
-            "models": [{"name": "qwen2.5-vl:7b-instruct-q4_k_m"}]
+            "models": [{"name": "qwen3-vl:8b-fp4"}]
         }
-        mock_requests.get.return_value = mock_resp
+        self._mock_get.return_value = mock_resp
 
         agent = SceneUnderstandingAgent()
         result = agent.check_availability()
@@ -36,8 +39,8 @@ class TestSceneAgentAvailability:
         assert agent._available is True
 
     def test_check_unavailable(self, mock_requests):
-        """Ollama 服務不可用時應返回 False"""
-        mock_requests.get.side_effect = requests.ConnectionError("Connection refused")
+        """Ollama ���務不可用時應返回 False"""
+        self._mock_get.side_effect = requests.ConnectionError("Connection refused")
 
         agent = SceneUnderstandingAgent()
         result = agent.check_availability()
@@ -51,7 +54,7 @@ class TestSceneAgentAvailability:
         mock_resp.json.return_value = {
             "models": [{"name": "llama3:8b"}]
         }
-        mock_requests.get.return_value = mock_resp
+        self._mock_get.return_value = mock_resp
 
         agent = SceneUnderstandingAgent()
         result = agent.check_availability()
@@ -63,20 +66,21 @@ class TestSceneAnalysis:
 
     @pytest.fixture(autouse=True)
     def setup(self):
-        with patch('agents.scene_agent.requests') as mock_req:
-            # 模擬 check_availability 成功
-            mock_resp = MagicMock()
-            mock_resp.status_code = 200
-            mock_resp.json.return_value = {
-                "models": [{"name": "qwen2.5-vl:7b-instruct-q4_k_m"}]
-            }
-            mock_req.get.return_value = mock_resp
-            
-            # 模擬 analyze 回應
-            mock_gen_resp = MagicMock()
-            mock_gen_resp.status_code = 200
-            mock_gen_resp.json.return_value = {
-                "response": """```json
+        with patch('agents.scene_agent.requests.get') as mock_get:
+            with patch('agents.scene_agent.requests.post') as mock_post:
+                # 模擬 check_availability 成功
+                mock_resp = MagicMock()
+                mock_resp.status_code = 200
+                mock_resp.json.return_value = {
+                    "models": [{"name": "qwen3-vl:8b-fp4"}]
+                }
+                mock_get.return_value = mock_resp
+                
+                # 模擬 analyze 回應
+                mock_gen_resp = MagicMock()
+                mock_gen_resp.status_code = 200
+                mock_gen_resp.json.return_value = {
+                    "response": """```json
 {
     "scene_description": "一個陽光明媚的戶外公園",
     "main_content": "人們在草地上野餐",
@@ -85,11 +89,11 @@ class TestSceneAnalysis:
     "tags": ["戶外", "公園", "野餐"]
 }
 ```""",
-                "done": True
-            }
-            mock_req.post.return_value = mock_gen_resp
-            
-            yield mock_req
+                    "done": True
+                }
+                mock_post.return_value = mock_gen_resp
+                
+                yield mock_post
 
     def test_successful_analysis(self, test_image_jpg: Path, setup):
         """成功的分析應返回結構化 JSON"""
@@ -114,10 +118,11 @@ class TestSceneAnalysis:
         """服務不可用時應返回錯誤"""
         agent = SceneUnderstandingAgent()
         agent._available = False
-        
-        result = agent.analyze(str(test_image_jpg))
-        assert result["success"] is False
-        assert "不可用" in result.get("error", "")
+        # mock check_availability 返回 False（不依賴 mock_requests）
+        with patch.object(agent, 'check_availability', return_value=False):
+            result = agent.analyze(str(test_image_jpg))
+            assert result["success"] is False
+            assert "不可用" in result.get("error", "")
 
     def test_api_error(self, test_image_jpg: Path, setup):
         """API 返回錯誤時應處理異常"""
@@ -127,7 +132,7 @@ class TestSceneAnalysis:
         mock_resp = MagicMock()
         mock_resp.status_code = 500
         mock_resp.text = "Internal Server Error"
-        setup.post.return_value = mock_resp
+        setup.return_value = mock_resp
         
         result = agent.analyze(str(test_image_jpg))
         assert result["success"] is False
