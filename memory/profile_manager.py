@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from collections import Counter, defaultdict
+from collections import Counter
 
 from config.settings import settings
 
@@ -46,7 +46,7 @@ class ProfileManager:
         return self._default_profile()
     
     def _default_profile(self) -> Dict[str, Any]:
-        """創建默認畫像結構"""
+        """創建默認畫像結構（全部使用普通 dict，避免 Counter 序列化不一致）"""
         return {
             "user_id": self.user_id,
             "created_at": datetime.now().isoformat(),
@@ -58,17 +58,17 @@ class ProfileManager:
                 "total_images_without_faces": 0,
             },
             "scene_stats": {
-                "top_tags": Counter(),
-                "mood_distribution": Counter(),
+                "top_tags": {},
+                "mood_distribution": {},
             },
             "face_stats": {
-                "gender_distribution": Counter(),
-                "age_groups": Counter(),
-                "emotion_distribution": Counter(),
+                "gender_distribution": {},
+                "age_groups": {},
+                "emotion_distribution": {},
             },
             "time_activity": {
-                "by_hour": Counter(),
-                "by_month": Counter(),
+                "by_hour": {},
+                "by_month": {},
             },
             "recent_episodes": [],
         }
@@ -97,16 +97,20 @@ class ProfileManager:
             
             for face in faces:
                 # 性別
-                profile["face_stats"]["gender_distribution"][face.get("gender", "Unknown")] += 1
+                gender = face.get("gender", "Unknown")
+                profile["face_stats"]["gender_distribution"][gender] = \
+                    profile["face_stats"]["gender_distribution"].get(gender, 0) + 1
                 
                 # 年齡分組
                 age = face.get("age", 0)
                 age_group = self._categorize_age(age)
-                profile["face_stats"]["age_groups"][age_group] += 1
+                profile["face_stats"]["age_groups"][age_group] = \
+                    profile["face_stats"]["age_groups"].get(age_group, 0) + 1
                 
                 # 情緒
                 emotion = face.get("emotion", "Unknown")
-                profile["face_stats"]["emotion_distribution"][emotion] += 1
+                profile["face_stats"]["emotion_distribution"][emotion] = \
+                    profile["face_stats"]["emotion_distribution"].get(emotion, 0) + 1
         else:
             profile["stats"]["total_images_without_faces"] += 1
         
@@ -114,14 +118,19 @@ class ProfileManager:
         scene_analysis = episode_data.get("scene_analysis", {})
         if scene_analysis.get("tags"):
             for tag in scene_analysis["tags"]:
-                profile["scene_stats"]["top_tags"][tag] += 1
+                profile["scene_stats"]["top_tags"][tag] = \
+                    profile["scene_stats"]["top_tags"].get(tag, 0) + 1
         
         # 時間活動
         timestamp = episode_data.get("timestamp", datetime.now().isoformat())
         try:
             dt = datetime.fromisoformat(timestamp)
-            profile["time_activity"]["by_hour"][str(dt.hour)] += 1
-            profile["time_activity"]["by_month"][f"{dt.year}-{dt.month:02d}"] += 1
+            hour_key = str(dt.hour)
+            month_key = f"{dt.year}-{dt.month:02d}"
+            profile["time_activity"]["by_hour"][hour_key] = \
+                profile["time_activity"]["by_hour"].get(hour_key, 0) + 1
+            profile["time_activity"]["by_month"][month_key] = \
+                profile["time_activity"]["by_month"].get(month_key, 0) + 1
         except (ValueError, TypeError):
             pass
         
@@ -159,7 +168,7 @@ class ProfileManager:
         temp_path.replace(self.profile_path)
     
     def _make_serializable(self, obj: Any) -> Any:
-        """將含有 Counter 的結構轉換為可 JSON 序列化的形式"""
+        """確保結構可 JSON 序列化（兼容舊版 Counter 數據）"""
         if isinstance(obj, Counter):
             return dict(obj.most_common())
         elif isinstance(obj, dict):
@@ -179,12 +188,21 @@ class ProfileManager:
         """
         profile = self._make_serializable(self._profile)
         
-        # 移除冗餘字段
+        # 按計數降序排列
+        top_tags = dict(sorted(
+            profile["scene_stats"]["top_tags"].items(),
+            key=lambda x: x[1], reverse=True
+        )[:10])
+        mood_distribution = dict(sorted(
+            profile["face_stats"]["emotion_distribution"].items(),
+            key=lambda x: x[1], reverse=True
+        )[:5])
+        
         summary = {
             "user_id": profile["user_id"],
             "stats": profile["stats"],
-            "top_tags": dict(Counter(profile["scene_stats"]["top_tags"]).most_common(10)),
-            "mood_distribution": dict(Counter(profile["face_stats"]["emotion_distribution"]).most_common(5)),
+            "top_tags": top_tags,
+            "mood_distribution": mood_distribution,
             "gender_ratio": profile["face_stats"]["gender_distribution"],
             "age_distribution": profile["face_stats"]["age_groups"],
             "total_episodes": profile["stats"]["total_analyses"],
@@ -194,17 +212,19 @@ class ProfileManager:
     
     def get_top_tags(self, n: int = 10) -> List[str]:
         """獲取最常見的場景標籤"""
-        tags = Counter(self._profile["scene_stats"]["top_tags"])
-        return [tag for tag, _ in tags.most_common(n)]
+        tags = self._profile["scene_stats"]["top_tags"]
+        sorted_tags = sorted(tags.items(), key=lambda x: x[1], reverse=True)
+        return [tag for tag, _ in sorted_tags[:n]]
     
     def get_emotion_trend(self) -> Dict[str, int]:
         """獲取情緒分布趨勢"""
-        return dict(Counter(self._profile["face_stats"]["emotion_distribution"]).most_common())
+        emotions = self._profile["face_stats"]["emotion_distribution"]
+        return dict(sorted(emotions.items(), key=lambda x: x[1], reverse=True))
     
     def get_active_hours(self) -> List[tuple]:
         """獲取活躍時段排名"""
-        hours = Counter(self._profile["time_activity"]["by_hour"])
-        return hours.most_common()
+        hours = self._profile["time_activity"]["by_hour"]
+        return sorted(hours.items(), key=lambda x: x[1], reverse=True)
     
     def reset(self):
         """重置畫像（危險操作）"""

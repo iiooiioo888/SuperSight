@@ -26,36 +26,30 @@ from utils.security import validate_file, setup_logging, log_access
 logger = setup_logging()
 
 
-# ─── 全局實例 ────────────────────────────────────
+# ─── 全局實例（按 user_id 隔離）──────────────────
 
-_agent: Optional[SuperSightMasterAgent] = None
-_memory: Optional[MemoryModule] = None
-_profile: Optional[ProfileManager] = None
+_agents: dict[str, SuperSightMasterAgent] = {}
+_profiles: dict[str, ProfileManager] = {}
 
 
 def get_agent(user_id: str = "default_user") -> SuperSightMasterAgent:
-    """獲取或創建主智能體實例（延遲加載）"""
-    global _agent
-    if _agent is None:
-        _agent = SuperSightMasterAgent(user_id=user_id)
-        logger.info("主智能體初始化完成")
-    return _agent
+    """獲取或創建主智能體實例（按 user_id 隔離）"""
+    if user_id not in _agents:
+        _agents[user_id] = SuperSightMasterAgent(user_id=user_id)
+        logger.info(f"主智能體初始化完成 (user_id={user_id})")
+    return _agents[user_id]
 
 
 def get_memory(user_id: str = "default_user") -> MemoryModule:
-    """獲取或創建記憶模組實例"""
-    global _memory
-    if _memory is None:
-        _memory = MemoryModule(user_id=user_id)
-    return _memory
+    """獲取記憶模組實例（複用 agent 內部的實例，避免重複初始化）"""
+    return get_agent(user_id).memory
 
 
 def get_profile(user_id: str = "default_user") -> ProfileManager:
-    """獲取或創建畫像管理器實例"""
-    global _profile
-    if _profile is None:
-        _profile = ProfileManager(user_id=user_id)
-    return _profile
+    """獲取或創建畫像管理器實例（按 user_id 隔離）"""
+    if user_id not in _profiles:
+        _profiles[user_id] = ProfileManager(user_id=user_id)
+    return _profiles[user_id]
 
 
 # ─── 核心功能函數 ──────────────────────────────────
@@ -375,9 +369,11 @@ def main():
     logger.info(f"服務地址: http://{settings.SERVER_HOST}:{settings.SERVER_PORT}")
     
     if settings.is_password_default:
+        pwd = settings.SUPERSIGHT_PASSWORD
+        masked = pwd[:3] + "*" * max(0, len(pwd) - 3) if len(pwd) > 3 else "***"
         logger.warning(
             f"⚠️ 未設置 SUPERSIGHT_PASSWORD 環境變量！\n"
-            f"本次會話密碼: {settings.SUPERSIGHT_PASSWORD}"
+            f"本次會話密碼: {masked}（請查看啟動日誌上方的 Web UI 顯示）"
         )
     
     # 創建界面

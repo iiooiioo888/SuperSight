@@ -283,28 +283,48 @@ class MemoryModule:
         按時間範圍檢索記憶。
         """
         try:
-            results = self.collection.query(
-                query_texts=[""],
-                n_results=top_k,
-                where={
-                    "$and": [
-                        {"timestamp": {"$gte": start}},
-                        {"timestamp": {"$lte": end}}
-                    ]
-                },
-                include=["documents", "metadatas"]
-            )
+            # 使用 get() 配合 where 過濾（不需向量查詢）
+            where_filter = {
+                "$and": [
+                    {"timestamp": {"$gte": start}},
+                    {"timestamp": {"$lte": end}}
+                ]
+            }
             
-            formatted = []
-            if results and results.get("ids") and results["ids"][0]:
-                for i, doc_id in enumerate(results["ids"][0]):
-                    formatted.append({
-                        "id": doc_id,
-                        "content": results["documents"][0][i] if results.get("documents") else "",
-                        "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
-                    })
-            
-            return formatted
+            # 先嘗試用 get()（不需要嵌入查詢）
+            try:
+                results = self.collection.get(
+                    where=where_filter,
+                    limit=top_k,
+                    include=["documents", "metadatas"]
+                )
+                formatted = []
+                if results and results.get("ids"):
+                    for i, doc_id in enumerate(results["ids"]):
+                        formatted.append({
+                            "id": doc_id,
+                            "content": results["documents"][i] if results.get("documents") else "",
+                            "metadata": results["metadatas"][i] if results.get("metadatas") else {},
+                        })
+                return formatted
+            except Exception:
+                # 某些 ChromaDB 版本的 get() 不支持 where，回退到 query
+                results = self.collection.query(
+                    query_texts=["時間範圍檢索"],
+                    n_results=top_k,
+                    where=where_filter,
+                    include=["documents", "metadatas"]
+                )
+                
+                formatted = []
+                if results and results.get("ids") and results["ids"][0]:
+                    for i, doc_id in enumerate(results["ids"][0]):
+                        formatted.append({
+                            "id": doc_id,
+                            "content": results["documents"][0][i] if results.get("documents") else "",
+                            "metadata": results["metadatas"][0][i] if results.get("metadatas") else {},
+                        })
+                return formatted
             
         except Exception as e:
             self.logger.error(f"時間範圍檢索失敗: {e}")

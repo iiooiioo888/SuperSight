@@ -140,8 +140,8 @@ class SceneUnderstandingAgent:
         Returns:
             dict: 場景分析結果
         """
-        if not self._available:
-            self.check_availability()
+        # 每次都重新驗證可用性（服務可能中途停止或恢復）
+        self.check_availability()
         
         if not self._available:
             return {

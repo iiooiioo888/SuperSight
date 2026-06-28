@@ -56,6 +56,7 @@ def validate_file(file_path: str) -> Tuple[bool, str]:
             b"\xff\xd8": ("JPEG", [".jpg", ".jpeg"]),
             b"\x89PNG": ("PNG", [".png"]),
             b"RIFF": ("WEBP", [".webp"]),  # WEBP 以 RIFF 開頭，需進一步驗證
+            b"BM": ("BMP", [".bmp"]),
         }
         
         is_valid_magic = False

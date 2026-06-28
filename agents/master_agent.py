@@ -39,6 +39,7 @@ class V3AgentState(TypedDict):
     errors: List[str]
     resource_status: Optional[Dict[str, Any]]
     aggregated_data: Optional[Dict[str, Any]]
+    memory_saved: bool
 
 
 # ─── 元數據提取子智能體 ──────────────────────────
@@ -214,19 +215,20 @@ class SuperSightMasterAgent:
         workflow.set_entry_point("check_resources")
         
         # V3.0 條件路由（4 路）
+        # "full" 返回列表觸發 fan-out 並行執行 face + scene 分析
         workflow.add_conditional_edges(
             "check_resources",
             self._route_by_resources,
             {
-                "full": "analyze_face",
+                "full": ["analyze_face", "analyze_scene"],
                 "vlm_only": "analyze_scene",
                 "face_only": "analyze_face",
                 "minimal": "extract_meta"
             }
         )
         
-        # V3.0 串行鏈（生產環境可用 asyncio.gather 實現真並行）
-        workflow.add_edge("analyze_face", "analyze_scene")
+        # fan-in：face 和 scene 分析完畢後都進入 extract_meta
+        workflow.add_edge("analyze_face", "extract_meta")
         workflow.add_edge("analyze_scene", "extract_meta")
         
         # 聚合與存儲
@@ -271,11 +273,19 @@ class SuperSightMasterAgent:
         if status.level == ResourceLevel.CRITICAL:
             self.logger.warning(f"資源不足，降級運行: {status.message}")
         
+        # 根據實際路由方向精確設置可用標誌
+        route = self._route_by_resources({"resource_status": {
+            "level": status.level.value,
+            "can_use_vlm": status.can_use_vlm,
+            "can_use_face": status.can_use_face,
+        }})
+        
         state["resource_status"] = {
             "level": status.level.value,
             "message": status.message,
-            "can_use_vlm": status.can_use_vlm,
-            "can_use_face": status.can_use_face,
+            "route": route,
+            "can_use_vlm": route in ("full", "vlm_only"),
+            "can_use_face": route in ("full", "face_only"),
             "vram_free_gb": status.vram_free_gb,
             "fp4_quantization": settings.FP4_QUANTIZATION,
         }
@@ -368,9 +378,13 @@ class SuperSightMasterAgent:
             summary = self._generate_summary(aggregated)
             self.memory.add_episode(content=aggregated, text_summary=summary)
             self.logger.info("V3.0 記憶存儲完成 (bge-m4 嵌入)")
+            state["memory_saved"] = True
         except Exception as e:
             self.logger.error(f"記憶存儲失敗: {e}")
-            state.setdefault("errors", []).append(f"記憶存儲: {str(e)}")
+            state.setdefault("errors", []).append(
+                f"⚠️ 記憶存儲失敗（分析結果未持久化）: {str(e)}"
+            )
+            state["memory_saved"] = False
         
         return state
     
@@ -432,6 +446,9 @@ class SuperSightMasterAgent:
             for err in errors:
                 report_parts.append(f"  - {err}")
         
+        if state.get("memory_saved"):
+            report_parts.append(f"\n💾 記憶已保存（可用自然語言檢索）")
+        
         report = "\n".join(report_parts) if report_parts else "分析完成，但未能提取到有效信息。"
         state["final_report"] = report
         self.logger.info("V3.0 最終報告已生成")
@@ -482,7 +499,8 @@ class SuperSightMasterAgent:
             final_report="",
             errors=[],
             resource_status=None,
-            aggregated_data=None
+            aggregated_data=None,
+            memory_saved=False,
         )
         
         try:
@@ -496,23 +514,29 @@ class SuperSightMasterAgent:
     
     def process(self, image_path: str, query: str = "") -> str:
         """同步處理單張圖片"""
+        import concurrent.futures
         try:
             # 檢查是否已有運行的事件循環（例如在 Gradio 中）
             try:
                 loop = asyncio.get_running_loop()
-                # 如果有運行中的循環，使用 asyncio.run_coroutine_threadsafe
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
+            except RuntimeError:
+                loop = None
+            
+            if loop is not None and loop.is_running():
+                # 在已有事件循環的線程中（如 Gradio），在獨立線程中運行
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                     future = executor.submit(
-                        asyncio.run, 
+                        asyncio.run,
                         self.process_async(image_path, query)
                     )
-                    result = future.result()
-                    return result
-            except RuntimeError:
+                    return future.result(timeout=300)  # 5 分鐘超時防止死鎖
+            else:
                 # 沒有運行中的循環，直接使用 asyncio.run
-                result = asyncio.run(self.process_async(image_path, query))
-                return result
+                return asyncio.run(self.process_async(image_path, query))
+        except concurrent.futures.TimeoutError:
+            self.logger.error("V3.0 處理超時 (300s)")
+            self.last_aggregated_data = None
+            return "❌ 分析超時，請稍後重試"
         except Exception as e:
             self.logger.error(f"V3.0 同步處理失敗: {e}")
             self.last_aggregated_data = None

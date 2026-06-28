@@ -81,7 +81,7 @@ class Settings:
     @property
     def SUPERSIGHT_PASSWORD(self) -> str:
         _raw = os.getenv("SUPERSIGHT_PASSWORD")
-        if not _raw or _raw == "change_me_first":
+        if not _raw or _raw in ("change_me_first", "your_strong_password_here"):
             if self._generated_password is None:
                 self._generated_password = secrets.token_urlsafe(16)
             return self._generated_password
@@ -94,7 +94,7 @@ class Settings:
     @property
     def is_password_default(self) -> bool:
         _raw = os.getenv("SUPERSIGHT_PASSWORD")
-        return not _raw or _raw == "change_me_first"
+        return not _raw or _raw in ("change_me_first", "your_strong_password_here")
 
 
 # 全局單例
